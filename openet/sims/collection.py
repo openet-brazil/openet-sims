@@ -17,9 +17,13 @@ import pprint
 from dateutil.relativedelta import *
 import ee
 
-import utils
-from image import Image
+from . import utils
+from .image import Image
+# Importing to get version number, is there a better way?
+import openet.sims
 import openet.core.interp as interp
+# TODO: import utils from openet.core
+# import openet.core.utils as utils
 
 
 def lazy_property(fn):
@@ -50,6 +54,7 @@ class Collection():
             cloud_cover_max=70,
             etr_source=None,
             etr_band=None,
+            etr_factor=1.0,
             filter_args=None,
             model_args=None,
             # model_args={'etr_source': 'IDAHO_EPSCOR/GRIDMET',
@@ -83,6 +88,8 @@ class Collection():
         etr_band : str, optional
             Reference ET band name (the default is None).  Parameter must be
             set here, in class init, or in model_args (searched in that order).
+        etr_factor : float, optional
+            Reference ET scaling factor (the default is 1.0).
         filter_args : dict
             Image collection filter keyword arguments (the default is None).
             Organize filter arguments as a nested dictionary with the primary
@@ -112,14 +119,17 @@ class Collection():
         # Pass the ETr parameters through as model keyword arguments
         self.etr_source = etr_source
         self.etr_band = etr_band
+        self.etr_factor = etr_factor
         if etr_source is not None:
             self.model_args['etr_source'] = etr_source
         if etr_band is not None:
             self.model_args['etr_band'] = etr_band
+        if etr_factor != 1.0:
+            self.model_args['etr_factor'] = etr_factor
 
         # Model specific variables that can be interpolated to a daily timestep
         # Should this be specified in the interpolation method instead?
-        self._interp_vars = ['ndvi', 'et']
+        # self._interp_vars = ['ndvi', 'kc']
 
         self._landsat_c1_sr_collections = [
             'LANDSAT/LC08/C01/T1_SR',
@@ -134,8 +144,7 @@ class Collection():
 
         # Check that collection IDs are supported
         for coll_id in self.collections:
-            if (coll_id not in self._landsat_c1_sr_collections and
-                    coll_id not in self._sentinel2_toa_collections):
+            if (coll_id not in self._landsat_c1_sr_collections):
                 raise ValueError('unsupported collection: {}'.format(coll_id))
 
         # Check that collections don't have "duplicates"
@@ -181,10 +190,10 @@ class Collection():
             self.collections = [c for c in self.collections if 'LE07' not in c]
         if self.end_date <= '2013-01-01':
             self.collections = [c for c in self.collections if 'LC08' not in c]
-        if self.end_date <= '2015-01-01':
-            self.collections = [c for c in self.collections if 'COPERNICUS' not in c]
+        # if self.end_date <= '2015-01-01':
+        #     self.collections = [c for c in self.collections if 'COPERNICUS' not in c]
 
-        self.model_name = 'SIMS_ET'
+        self.model_name = 'SIMS'
 
     def _build(self, variables=None, start_date=None, end_date=None):
         """Build a merged model variable image collection
@@ -283,7 +292,7 @@ class Collection():
 
     def interpolate(self, variables=None, t_interval='custom',
                     interp_method='linear', interp_days=32,
-                    etr_source=None, etr_band=None):
+                    etr_source=None, etr_band=None, etr_factor=1.0):
         """
 
         Parameters
@@ -306,6 +315,8 @@ class Collection():
         etr_band : str, optional
             Reference ET band name (the default is None).  Parameter must be
             set here, in class init, or in model_args (searched in that order).
+        etr_factor : float, optional
+            Reference ET scaling factor (the default is 1.0).
 
         Returns
         -------
@@ -318,7 +329,7 @@ class Collection():
         Notes
         -----
         Not all variables can be interpolated to new time steps.
-        Variables like ETr are simply summed whereas ETf is computed from the
+        Variables like ETr are simply summed whereas Kc is computed from the
         interpolated/aggregated values.
 
         """
@@ -391,6 +402,16 @@ class Collection():
         else:
             raise ValueError('etr_band was not set')
 
+        # Get ETr factor
+        if etr_factor is not None:
+            pass
+        elif self.etr_factor is not None:
+            etr_factor  = self.etr_factor
+        elif 'etr_factor' in self.model_args.keys():
+            etr_factor = self.model_args['etr_factor']
+        else:
+            raise ValueError('etr_factor was not set')
+
         if type(etr_source) is str:
             # Assume a string source is an single image collection ID
             #   not an list of collection IDs or ee.ImageCollection
@@ -418,28 +439,32 @@ class Collection():
             raise ValueError('unsupported etr_source: {}'.format(etr_source))
 
         # Initialize variable list to only variables that can be interpolated
-        interp_vars = list(set(self._interp_vars) & set(variables))
+        # daily_vars = list(set(self._interp_vars) & set(variables))
 
-        ## To return ET, the ETf must be interpolated
-        #if 'et' in variables and 'etf' not in interp_vars:
-        #    interp_vars.append('etf')
-
+        # Determine which scene variables need to be "built"
+        scene_vars = variables[:]
+        # ETf is not currently a method of the Image class
+        # The ETf will be computed from the ET and ETr
+        if 'etf' in variables:
+            scene_vars.remove('etf')
+        # To return ET, the Kc must be interpolated
+        if 'et' in variables and 'kc' not in scene_vars:
+            scene_vars.append('kc')
         # With the current interp.daily() function,
         #   something has to be interpolated in order to return etr
-        #if 'etr' in variables and 'etf' not in interp_vars:
-        #    interp_vars.append('etf')
-
+        if 'etr' in variables and 'kc' not in scene_vars:
+           scene_vars.append('kc')
         # The time band is always needed for interpolation
-        interp_vars.append('time')
+        scene_vars.append('time')
 
         # Count will be determined using the aggregate_coll image masks
         if 'count' in variables:
-            interp_vars.append('mask')
-            # interp_vars.remove('count')
+            scene_vars.append('mask')
+            # scene_vars.remove('count')
 
         # Build initial scene image collection
         scene_coll = self._build(
-            variables=interp_vars, start_date=interp_start_date,
+            variables=scene_vars, start_date=interp_start_date,
             end_date=interp_end_date)
 
         # For count, compute the composite/mosaic image for the mask band only
@@ -451,16 +476,16 @@ class Collection():
         # Including count/mask causes problems in interp.daily() function.
         # Issues with mask being an int but the values need to be double.
         # Casting the mask band to a double would fix this problem also.
-        if 'mask' in interp_vars:
-            interp_vars.remove('mask')
+        if 'mask' in scene_vars:
+            scene_vars.remove('mask')
 
         # Interpolate to a daily time step
-        # NOTE: the daily function is not computing ET (ETf x ETr)
+        # NOTE: the daily function is not computing ET (Kc x ETr)
         #   but is returning the target (ETr) band
         daily_coll = interp.daily(
             target_coll=daily_et_reference_coll,
-            source_coll=scene_coll.select(interp_vars),
-            interp_method=interp_method,  interp_days=interp_days)
+            source_coll=scene_coll.select(scene_vars),
+            interp_method=interp_method, interp_days=interp_days)
 
         # DEADBEEF - Originally all variables were being aggregated
         # It may be sufficient to only aggregate the mask/count variable,
@@ -479,26 +504,26 @@ class Collection():
         #     interp_vars.remove('mask')
         #
         # # Interpolate to a daily time step
-        # # NOTE: the daily function is not computing ET (ETf x ETr) but is
+        # # NOTE: the daily function is not computing ET (Kc x ETr) but is
         # #   returning the target (ETr) band
         # daily_coll = interp.daily(
         #     target_coll=daily_et_reference_coll,
         #     source_coll=aggregate_coll.select(interp_vars),
         #     interp_method=interp_method,  interp_days=interp_days)
 
-        # Compute ET from ETf and ETr (if necessary)
+        # Compute ET from Kc and ETr (if necessary)
         if 'et' in variables:
             def compute_et(img):
-                """This function assumes ETr and ETf are present"""
-                return img.addBands(img.select(['etf']).multiply(
+                """This function assumes ETr and Kc are present"""
+                return img.addBands(img.select(['kc']).multiply(
                     img.select(['etr'])).rename('et'))
                 # img_dt = ee.Date(img.get('system:time_start'))
                 # etr_coll = daily_et_reference_coll\
                 #     .filterDate(img_dt, img_dt.advance(1, 'day'))
                 # Set ETr to Landsat resolution/projection?
-                # etr_img = img.select(['etf']).multiply(0)\
+                # etr_img = img.select(['kc']).multiply(0)\
                 #     .add(ee.Image(etr_coll.first())).rename('etr')
-                # et_img = img.select(['etf']).multiply(etr_img).rename('et')
+                # et_img = img.select(['kc']).multiply(etr_img).rename('et')
                 # return img.addBands(et_img)
             daily_coll = daily_coll.map(compute_et)
 
@@ -510,7 +535,7 @@ class Collection():
             'interp_days': interp_days,
             'interp_method': interp_method,
             'model_name': self.model_name,
-            'model_version': openet.ndvi.__version__,
+            'model_version': openet.sims.__version__,
         }
         interp_properties.update(self.model_args)
 
@@ -521,9 +546,9 @@ class Collection():
                 agg_end_date = ee.Date(agg_start_date).advance(1, 'day')
 
                 # if 'et' in variables or 'etf' in variables:
-                et_img = daily_img.select(['et'])
+                et_img = daily_img.select(['et']).multiply(etr_factor)
                 # if 'etr' in variables or 'etf' in variables:
-                etr_img = daily_img.select(['etr'])
+                etr_img = daily_img.select(['etr']).multiply(etr_factor)
 
                 image_list = []
                 if 'et' in variables:
@@ -531,8 +556,8 @@ class Collection():
                 if 'etr' in variables:
                     image_list.append(etr_img.float())
                 if 'etf' in variables:
-                    etf_img = et_img.divide(etr_img).rename('etf')
-                    image_list.append(etf_img.float())
+                    etf_img = et_img.divide(etr_img).rename('etf').float()
+                    image_list.append(etf_img)
                 if 'ndvi' in variables:
                     ndvi_img = daily_img.select(['ndvi']).float()
                     image_list.append(ndvi_img)
@@ -562,10 +587,10 @@ class Collection():
                 agg_end_date = ee.Date(agg_start_date).advance(1, 'month')
                 # if 'et' in variables or 'etf' in variables:
                 et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                    .select(['et']).sum()
+                    .select(['et']).sum().multiply(etr_factor)
                 # if 'etr' in variables or 'etf' in variables:
                 etr_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                    .select(['etr']).sum()
+                    .select(['etr']).sum().multiply(etr_factor)
 
                 image_list = []
                 if 'et' in variables:
@@ -606,10 +631,10 @@ class Collection():
                 agg_end_date = ee.Date(agg_start_date).advance(1, 'year')
                 # if 'et' in variables or 'etf' in variables:
                 et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                    .select(['et']).sum()
+                    .select(['et']).sum().multiply(etr_factor)
                 # if 'etr' in variables or 'etf' in variables:
                 etr_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                    .select(['etr']).sum()
+                    .select(['etr']).sum().multiply(etr_factor)
 
                 image_list = []
                 if 'et' in variables:
@@ -640,10 +665,10 @@ class Collection():
         elif t_interval.lower() == 'custom':
             # if 'et' in variables or 'etf' in variables:
             et_img = daily_coll.filterDate(start_date, end_date) \
-                .select(['et']).sum()
+                .select(['et']).sum().multiply(etr_factor)
             # if 'etr' in variables or 'etf' in variables:
             etr_img = daily_coll.filterDate(start_date, end_date) \
-                .select(['etr']).sum()
+                .select(['etr']).sum().multiply(etr_factor)
 
             image_list = []
             if 'et' in variables:

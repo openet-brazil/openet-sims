@@ -1,4 +1,4 @@
 earthengine-api
 oauth2client
-openet-core>=0.0.7
+openet-core>=0.0.10
 python-dateutil

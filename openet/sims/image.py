@@ -13,8 +13,9 @@
 
 import ee
 
-import utils
+from . import utils
 import openet.core.common as common
+# import utils
 
 def lazy_property(fn):
     """Decorator that makes a property lazy-evaluated
@@ -39,8 +40,9 @@ class Image():
             image,
             etr_source=None,
             etr_band=None,
+            etr_factor=1.0,
             landcover_source='USDA/NASS/CDL',
-            landcover_band='cropland'
+            landcover_band='cropland',
             ):
         """Construct a SIMS model based ET Image
 
@@ -56,6 +58,8 @@ class Image():
         etr_band : str, optional
             Reference ET band name (the default is None).
             Parameter is required if computing 'etr' or 'et'.
+        etr_factor : float, optional
+            Reference ET scaling factor (the default is 1.0).
         landcover_source : str, optional
             Landcover source (the default is CDL).  The source should be an
             Earth Engine Image ID (or ee.Image).  Currently only NLCD
@@ -80,6 +84,7 @@ class Image():
 
         self.etr_source = etr_source
         self.etr_band = etr_band
+        self.etr_factor = etr_factor
 
         self.landcover_source = landcover_source
         self.landcover_band = landcover_band
@@ -96,6 +101,7 @@ class Image():
 
         # Build date properties from the system:time_start
         self._date = ee.Date(self._time_start)
+        self._year = ee.Number(self._date.get('year'))
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
 
@@ -115,6 +121,18 @@ class Image():
         for v in variables:
             if v.lower() == 'et':
                 output_images.append(self.et)
+            elif v.lower() == 'etr':
+                output_images.append(self.etr)
+            # elif v.lower() == 'etf':
+            #     output_images.append(self.etf)
+            elif v.lower() == 'fc':
+                output_images.append(self.fc)
+            elif v.lower() == 'kc':
+                output_images.append(self.kc)
+            # elif v.lower() == 'landcover':
+            #     output_images.append(self.landcover)
+            elif v.lower() == 'mask':
+                output_images.append(self.mask)
             elif v.lower() == 'ndvi':
                 output_images.append(self.ndvi)
             elif v.lower() == 'time':
@@ -124,55 +142,46 @@ class Image():
 
         return ee.Image(output_images).set(self._properties)
 
+    # @lazy_property
+    # def etf(self):
+    #     """Compute ETf as ET / ETr (this should be identical to Kc)"""
+    #     return self.et.divide(self.etr) \
+    #         .rename(['etf']).set(self._properties).double()
+
     @lazy_property
-    def ndvi(self):
-        """Return NDVI image"""
-        return self.image.select(['ndvi']).set(self._properties).double()
+    def etr(self):
+        """Compute reference ET for the image date"""
+        if utils.is_number(self.etr_source):
+            # Interpret numbers as constant images
+            # CGM - Should we use the ee_types here instead?
+            #   i.e. ee.ee_types.isNumber(self.etr_source)
+            etr_img = ee.Image.constant(self.etr_source)
+        elif type(self.etr_source) is str:
+            # Assume a string source is an image collection ID (not an image ID)
+            etr_img = ee.Image(
+                ee.ImageCollection(self.etr_source) \
+                    .filterDate(self._start_date, self._end_date) \
+                    .select([self.etr_band]) \
+                    .first())
+        else:
+            raise ValueError('unsupported etr_source: {}'.format(
+                self.etr_source))
+
+        return self.ndvi.multiply(0).add(etr_img) \
+            .multiply(self.etr_factor)\
+            .rename(['etr']).set(self._properties).double()
+
+    @lazy_property
+    def et(self):
+        """Compute ETcb as Kc * etr"""
+        return self.kc.multiply(self.etr) \
+            .rename(['et']).set(self._properties).double()
 
     @lazy_property
     def fc(self):
         """Compute and return the Fc image"""
-
-        return self.ndvi.multiply(1.26).subtract(-0.18) \
+        return self.ndvi.multiply(1.26).subtract(0.18) \
             .rename(['fc']).set(self._properties).double()
-
-    @lazy_property
-    def landcover(self):
-        """"Get the land cover type"""
-        start_date = self._start_date
-        end_date = self._end_date
-
-        #There is no CDL for 2017-present
-        if int(start_date[0:3]) > 2016:
-           start_date = '2016-01-01'
-        if int(end_date[0:3]) > 2016:
-           end_date = '2017-01-01'
-        # Assume a string source is an image collection ID (not an image ID)
-        landcover_img = ee.Image(ee.ImageCollection(self.landcover_source) \
-                                 .filterDate(start_date,end_date) \
-                                 .select('cropland') \
-                                 .first())
-
-        # Now we need to resample the CDL to our 3 generic classes
-        remapFrom = (1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-                     36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80,
-                     182, 202, 205, 206, 207, 208, 209, 213, 214, 216, 219, 221, 222, 224, 225, 226, 227, 228, 229, 230,
-                     231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250,
-                     254,
-                     69,
-                     66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223)
-
-        remapTo = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   2,
-                   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-
-        landcover_img = ee.Image(landcover_img.remap(remapFrom, remapTo, 0, 'cropland'))
-
-        return self.ndvi.multiply(0).add(landcover_img) \
-            .rename('cropland').set(self._properties).double()
 
     @lazy_property
     def kc(self):
@@ -197,59 +206,95 @@ class Image():
             and height.  Irrig. Sci. 28:17-34.  [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals
             from Table 2; 5a (Kcb)]
         """
-
         # I haven't implemented the crop-specific equations for this version.
         # We would first run the crop-specific before doing the generic equations
-
-        # First get the lancover and reclassify
-        landcover_img = self.landcover
-        fc_img = self.fc
+        fc_zero = self.fc.multiply(0)
 
         # Generic equation for annual crops
-        landcover_expr = landcover_img.expression("b('cropland') == 1")
-        img_expr = fc_img.expression("((b('fc') ** 2)* -0.4771) + (1.4047*b('fc'))+0.15")
-        kc1 = fc_img.where(landcover_expr, img_expr)
+        img_expr = self.fc.expression(
+            "((b('fc') ** 2) * -0.4771) + (1.4047 * b('fc')) + 0.15")
+        kc1 = fc_zero.where(self.landcover.eq(1), img_expr)
 
         # Generic equation for vines
-        img_expr = landcover_img.expression("b('cropland') == 2")
-        kc2 = fc_img.where(img_expr, fc_img.multiply(1.7))
+        kc2 = fc_zero.where(self.landcover.eq(2), self.fc.multiply(1.7))
 
         # Generic equation for trees
-        img_expr = landcover_img.expression("b('cropland') == 3")
-        kc3 = fc_img.where(img_expr, fc_img.multiply(1.48).add(0.007))
+        kc3 = fc_zero.where(
+            self.landcover.eq(3), self.fc.multiply(1.48).add(0.007))
 
         # Add up all the Kcs
-        kc = kc1.add(kc2).add(kc3)
-
-        return kc.rename(['kc']).set(self._properties).double()
+        return kc1.add(kc2).add(kc3)\
+            .rename(['kc']).set(self._properties).double()
 
     @lazy_property
-    def etr(self):
-        """Compute reference ET for the image date"""
-        if utils.is_number(self.etr_source):
+    def landcover(self):
+        """"Get the land cover type"""
+        if utils.is_number(self.landcover_source):
             # Interpret numbers as constant images
             # CGM - Should we use the ee_types here instead?
             #   i.e. ee.ee_types.isNumber(self.etr_source)
-            etr_img = ee.Image.constant(self.etr_source)
-        elif type(self.etr_source) is str:
-            # Assume a string source is an image collection ID (not an image ID)
-            etr_img = ee.Image(
-                ee.ImageCollection(self.etr_source) \
-                    .filterDate(self._start_date, self._end_date) \
-                    .select([self.etr_band]) \
-                    .first())
+            landcover_img = ee.Image.constant(self.landcover_source)\
+                .rename(['cropland'])
+        elif (type(self.landcover_source) is str and
+              self.landcover_source.upper() == 'USDA/NASS/CDL'):
+            # Use 2018 CDL even if image date is in 2019
+            start_year = self._year.min(2018)
+            start_date = ee.Date.fromYMD(start_year, 1, 1)
+            end_date = ee.Date.fromYMD(start_year.add(1), 1, 1)
+            cdl_coll = ee.ImageCollection(self.landcover_source) \
+                .filterDate(start_date, end_date)\
+                .select(['cropland'])
+            #     .select([self.landcover_band])
+            landcover_img = ee.Image(cdl_coll.first())
         else:
-            raise ValueError('unsupported etr_source: {}'.format(
-                self.etr_source))
+            raise ValueError('unsupported landcover_source: {}'.format(
+                self.landcover_source))
 
-        return self.ndvi.multiply(0).add(etr_img) \
-            .rename(['etr']).set(self._properties).double()
+        # Now we need to resample the CDL to our 3 generic classes
+        remapFrom = (
+            1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            30, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+            50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80, 182,
+            202, 205, 206, 207, 208, 209, 213, 214, 216, 219,
+            221, 222, 224, 225, 226, 227, 228, 229,
+            230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+            240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254,
+            69,
+            66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
+            201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223)
+        remapTo = (
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            2,
+            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+
+        landcover_img = landcover_img.remap(remapFrom, remapTo, 0, 'cropland')
+
+        return self.ndvi.multiply(0).add(landcover_img) \
+            .rename('cropland').set(self._properties).double()
 
     @lazy_property
-    def et(self):
-        """Compute ETcb as Kc * etr"""
-        return self.kc.multiply(self.etr) \
-            .rename(['et']).set(self._properties).double()
+    def mask(self):
+        """Mask of all active pixels (based on the final kc)
+
+        Using Kc here to capture any masking that might be in the Landcover
+        """
+        return self.kc.multiply(0).add(1).updateMask(1)\
+            .rename(['mask']).set(self._properties).uint8()
+
+    @lazy_property
+    def ndvi(self):
+        """Return NDVI image"""
+        return self.image.select(['ndvi']).set(self._properties).double()
+
+    # @lazy_property
+    # def quality(self):
+    #     """Set quality to 1 for all active pixels (for now)"""
+    #     return self.mask\
+    #         .rename(['quality']).set(self._properties)
 
     @lazy_property
     def time(self):
@@ -282,7 +327,6 @@ class Image():
             'LANDSAT/LE07/C01/T1_SR': 'from_landsat_c1_sr',
             'LANDSAT/LT05/C01/T1_SR': 'from_landsat_c1_sr',
             'LANDSAT/LT04/C01/T1_SR': 'from_landsat_c1_sr',
-            'COPERNICUS/S2': 'from_sentinel2_toa',
         }
 
         try:
@@ -346,7 +390,6 @@ class Image():
 
         # Instantiate the class
         return cls(input_image, **kwargs)
-
 
     @staticmethod
     def _ndvi(sr_image):
