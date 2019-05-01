@@ -184,6 +184,7 @@ class Image():
     def fc(self):
         """Compute and return the Fc image"""
         return self.ndvi.multiply(1.26).subtract(0.18) \
+            .clamp(0, 1)\
             .rename(['fc']).set(self._properties).double()
 
     @lazy_property
@@ -227,6 +228,7 @@ class Image():
 
         # Add up all the Kcs
         return kc1.add(kc2).add(kc3)\
+            .clamp(0, 1.25)\
             .rename(['kc']).set(self._properties).double()
 
     @lazy_property
