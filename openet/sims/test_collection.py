@@ -429,21 +429,21 @@ def test_Collection_interpolate_etr_source_not_set():
 def test_Collection_interpolate_t_interval_exception():
     """Test if Exception is raised for an invalid t_interval parameter"""
     with pytest.raises(ValueError):
-        utils.getinfo(model.Collection(**default_coll_args()) \
+        utils.getinfo(model.Collection(**default_coll_args())\
             .interpolate(t_interval='DEADBEEF'))
 
 
 def test_Collection_interpolate_interp_method_exception():
     """Test if Exception is raised for an invalid interp_method parameter"""
     with pytest.raises(ValueError):
-        utils.getinfo(model.Collection(**default_coll_args()) \
+        utils.getinfo(model.Collection(**default_coll_args())\
             .interpolate(interp_method='DEADBEEF'))
 
 
 def test_Collection_interpolate_interp_days_exception():
     """Test if Exception is raised for an invalid interp_days parameter"""
     with pytest.raises(ValueError):
-        utils.getinfo(model.Collection(**default_coll_args()) \
+        utils.getinfo(model.Collection(**default_coll_args())\
             .interpolate(interp_days=0))
 
 

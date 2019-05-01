@@ -27,13 +27,11 @@ SCENE_TIME = utils.millis(SCENE_DT)
 # I'm not sure how to make them fixtures and allow input parameters
 def input_image(red=0.1, nir=0.9):
     """Construct a fake input image with renamed bands"""
-    return ee.Image.constant([red, nir]).rename(['red', 'nir']) \
     return ee.Image.constant([red, nir]).rename(['red', 'nir'])\
         .set({'system:time_start': ee.Date(SCENE_DATE).millis()})
 
 
 def default_image(ndvi=0.8):
-    return ee.Image.constant([ndvi]).rename(['ndvi']) \
     return ee.Image.constant([ndvi]).rename(['ndvi'])\
         .set({
             'system:index': SCENE_ID,

@@ -148,7 +148,7 @@ class Image():
         """Return Kc as ETf"""
         return self.kc.rename(['etf']).set(self._properties).double()
         # ETf could also be calculated from ET and ETr
-        # return self.et.divide(self.etr) \
+        # return self.et.divide(self.etr)\
         #     .rename(['etf']).set(self._properties).double()
 
     @lazy_property
@@ -162,28 +162,28 @@ class Image():
         elif type(self.etr_source) is str:
             # Assume a string source is an image collection ID (not an image ID)
             etr_img = ee.Image(
-                ee.ImageCollection(self.etr_source) \
-                    .filterDate(self._start_date, self._end_date) \
-                    .select([self.etr_band]) \
+                ee.ImageCollection(self.etr_source)\
+                    .filterDate(self._start_date, self._end_date)\
+                    .select([self.etr_band])\
                     .first())
         else:
             raise ValueError('unsupported etr_source: {}'.format(
                 self.etr_source))
 
-        return self.ndvi.multiply(0).add(etr_img) \
+        return self.ndvi.multiply(0).add(etr_img)\
             .multiply(self.etr_factor)\
             .rename(['etr']).set(self._properties).double()
 
     @lazy_property
     def et(self):
         """Compute ETcb as Kc * etr"""
-        return self.kc.multiply(self.etr) \
+        return self.kc.multiply(self.etr)\
             .rename(['et']).set(self._properties).double()
 
     @lazy_property
     def fc(self):
         """Compute and return the Fc image"""
-        return self.ndvi.multiply(1.26).subtract(0.18) \
+        return self.ndvi.multiply(1.26).subtract(0.18)\
             .clamp(0, 1)\
             .rename(['fc']).set(self._properties).double()
 
@@ -246,7 +246,7 @@ class Image():
             start_year = self._year.min(2018)
             start_date = ee.Date.fromYMD(start_year, 1, 1)
             end_date = ee.Date.fromYMD(start_year.add(1), 1, 1)
-            cdl_coll = ee.ImageCollection(self.landcover_source) \
+            cdl_coll = ee.ImageCollection(self.landcover_source)\
                 .filterDate(start_date, end_date)\
                 .select(['cropland'])
             #     .select([self.landcover_band])
@@ -331,7 +331,7 @@ class Image():
         #     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
         # landcover_img = landcover_img.remap(remapFrom, remapTo, 0, 'cropland')
 
-        return self.ndvi.multiply(0).add(landcover_img) \
+        return self.ndvi.multiply(0).add(landcover_img)\
             .rename('cropland').set(self._properties).double()
 
     @lazy_property
@@ -357,8 +357,8 @@ class Image():
     @lazy_property
     def time(self):
         """Return an image of the 0 UTC time (in milliseconds)"""
-        return self.mask \
-            .double().multiply(0).add(utils.date_to_time_0utc(self._date)) \
+        return self.mask\
+            .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
             .rename(['time']).set(self._properties).double()
 
     @classmethod
@@ -438,8 +438,8 @@ class Image():
         ])
 
         # Apply the cloud mask and add properties
-        input_image = input_image \
-            .updateMask(common.landsat_c1_sr_cloud_mask(sr_image)) \
+        input_image = input_image\
+            .updateMask(common.landsat_c1_sr_cloud_mask(sr_image))\
             .set({
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),
@@ -463,5 +463,5 @@ class Image():
         ee.Image
 
         """
-        return sr_image.normalizedDifference(['nir', 'red']) \
+        return sr_image.normalizedDifference(['nir', 'red'])\
             .rename(['ndvi'])
