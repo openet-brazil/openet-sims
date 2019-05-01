@@ -68,6 +68,7 @@ class Image():
             Landcover band (the default is None).  The source should be an
             Earth Engine Image ID (or ee.Image).  Currently only NLCD
             landcovers are supported.
+
         Notes
         -----
         Fc = (NDVI * 1.26) - 0.18
@@ -76,7 +77,7 @@ class Image():
             vegetable crop evapotranspiration in California's San Joaquin Valley. REM
             Sens. 4:439-455. [EQN 1]
 
-        Kc = Fc based on croptype
+        Kc = Fc based on crop type
         ETcb = Kc * ETo
 
         """
@@ -123,8 +124,8 @@ class Image():
                 output_images.append(self.et)
             elif v.lower() == 'etr':
                 output_images.append(self.etr)
-            # elif v.lower() == 'etf':
-            #     output_images.append(self.etf)
+            elif v.lower() == 'etf':
+                output_images.append(self.etf)
             elif v.lower() == 'fc':
                 output_images.append(self.fc)
             elif v.lower() == 'kc':
@@ -142,11 +143,13 @@ class Image():
 
         return ee.Image(output_images).set(self._properties)
 
-    # @lazy_property
-    # def etf(self):
-    #     """Compute ETf as ET / ETr (this should be identical to Kc)"""
-    #     return self.et.divide(self.etr) \
-    #         .rename(['etf']).set(self._properties).double()
+    @lazy_property
+    def etf(self):
+        """Return Kc as ETf"""
+        return self.kc.rename(['etf']).set(self._properties).double()
+        # ETf could also be calculated from ET and ETr
+        # return self.et.divide(self.etr) \
+        #     .rename(['etf']).set(self._properties).double()
 
     @lazy_property
     def etr(self):
@@ -251,27 +254,80 @@ class Image():
                 self.landcover_source))
 
         # Now we need to resample the CDL to our 3 generic classes
-        remapFrom = (
-            1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-            30, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-            50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80, 182,
-            202, 205, 206, 207, 208, 209, 213, 214, 216, 219,
-            221, 222, 224, 225, 226, 227, 228, 229,
-            230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
-            240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254,
-            69,
-            66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
-            201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223)
-        remapTo = (
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            2,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+        # CGM - Trying out some other ways of defining the remap table that are
+        #   a little less prone to error
 
-        landcover_img = landcover_img.remap(remapFrom, remapTo, 0, 'cropland')
+        # CGM - Group the "from" values in a list for each "to" value
+        remap_dict = {
+            1: [1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14,
+                21, 22, 23, 24, 25, 26, 27, 28, 29,
+                30, 31, 32, 33, 34, 35, 36, 37, 38,
+                41, 42, 43, 44, 45, 46, 47, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80, 182,
+                202, 205, 206, 207, 208, 209, 213, 214, 216, 219,
+                221, 222, 224, 225, 226, 227, 228, 229,
+                230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+                240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254],
+            2: [69],
+            3: [66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
+                201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223],
+        }
+        remap_dict = {f: t for t, from_list in remap_dict.items() for f in from_list}
+        remap_from, remap_to = zip(*sorted(remap_dict.items()))
+        landcover_img = landcover_img.remap(remap_from, remap_to, 0, 'cropland')
+
+        # # CGM - Define the map directly for each crop
+        # remap_dict = {
+        #     1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1,
+        #     10: 1, 11: 1, 12: 1, 13: 1, 14: 1,
+        #     21: 1, 22: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 28: 1, 29: 1,
+        #     30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, 36: 1, 37: 1, 38: 1,
+        #     41: 1, 42: 1, 43: 1, 44: 1, 45: 1, 46: 1, 47: 1, 48: 1, 49: 1,
+        #     50: 1, 51: 1, 52: 1, 53: 1, 54: 1, 55: 1, 56: 1, 57: 1, 58: 1, 59: 1,
+        #     60: 1, 61: 1, 80: 1, 182: 1,
+        #     202: 1, 205: 1, 206: 1, 207: 1, 208: 1, 209: 1,
+        #     213: 1, 214: 1, 216: 1, 219: 1,
+        #     221: 1, 222: 1, 224: 1, 225: 1, 226: 1, 227: 1, 228: 1, 229: 1,
+        #     230: 1, 231: 1, 232: 1, 233: 1, 234: 1, 235: 1, 236: 1, 237: 1, 238: 1, 239: 1,
+        #     240: 1, 241: 1, 242: 1, 243: 1, 244: 1, 245: 1, 246: 1, 247: 1, 248: 1, 249: 1,
+        #     250: 1, 254: 1,
+        #     69: 2,
+        #     66: 3, 67: 3, 68: 3,
+        #     70: 3, 71: 3, 72: 3, 73: 3, 74: 3, 75: 3, 76: 3, 77: 3,
+        #     201: 3, 203: 3, 204: 3,
+        #     210: 3, 211: 3, 212: 3, 215: 3, 217: 3, 218: 3, 220: 3, 223: 3,
+        # }
+        # remap_from, remap_to = zip(*remap_dict.items())
+        # landcover_img = landcover_img.remap(remap_from, remap_to, 0, 'cropland')
+
+        # # CGM - Original Remap
+        # remapFrom = (
+        #     1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14,
+        #     21, 22, 23, 24, 25, 26, 27, 28, 29,
+        #     30, 31, 32, 33, 34, 35, 36, 37, 38,
+        #     41, 42, 43, 44, 45, 46, 47, 48, 49,
+        #     50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80, 182,
+        #     202, 205, 206, 207, 208, 209, 213, 214, 216, 219,
+        #     221, 222, 224, 225, 226, 227, 228, 229,
+        #     230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+        #     240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254,
+        #     69,
+        #     66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
+        #     201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223)
+        # remapTo = (
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        #     2,
+        #     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        #     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+        # landcover_img = landcover_img.remap(remapFrom, remapTo, 0, 'cropland')
 
         return self.ndvi.multiply(0).add(landcover_img) \
             .rename('cropland').set(self._properties).double()

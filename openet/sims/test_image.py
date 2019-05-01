@@ -61,7 +61,8 @@ def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                       landcover_source='USDA/NASS/CDL',
                       landcover_band='cropland'):
     return model.Image(**default_image_args(
-        ndvi=ndvi, etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
+        ndvi=ndvi,
+        etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
         landcover_source=landcover_source, landcover_band=landcover_band))
 
 
@@ -88,12 +89,10 @@ def test_Image_init_calculated_properties():
 def test_Image_init_date_properties():
     m = default_image_obj()
     assert utils.getinfo(m._date)['value'] == SCENE_TIME
-    # assert utils.getinfo(m._year) == int(SCENE_DATE.split('-')[0])
-    # assert utils.getinfo(m._month) == int(SCENE_DATE.split('-')[1])
+    assert utils.getinfo(m._year) == int(SCENE_DATE.split('-')[0])
     assert utils.getinfo(m._start_date)['value'] == SCENE_TIME
     assert utils.getinfo(m._end_date)['value'] == utils.millis(
         SCENE_DT + datetime.timedelta(days=1))
-    # assert utils.getinfo(m._doy) == SCENE_DOY
 
 
 @pytest.mark.parametrize(
@@ -162,9 +161,10 @@ def test_Image_fc_constant_value(ndvi, expected, tol=0.0001):
     assert abs(output['fc'] - expected) <= tol
 
 
-def test_Image_fc_default_value(ndvi=0.8, expected=0.828, tol=0.0001):
-    output = utils.constant_image_value(default_image_obj(ndvi=ndvi).fc)
-    assert abs(output['fc'] - expected) <= tol
+# CGM - I'm not sure what the value of this test is
+# def test_Image_fc_default_value(ndvi=0.8, expected=0.828, tol=0.0001):
+#     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).fc)
+#     assert abs(output['fc'] - expected) <= tol
 
 
 def test_Image_landcover_properties():
@@ -185,9 +185,8 @@ def test_Image_landcover_properties():
     ]
 )
 def test_Image_landcover_constant_value(landcover_value, expected):
-    args = default_image_args(landcover_source=landcover_value)
-    output_img = model.Image(**args).landcover
-    output = utils.constant_image_value(output_img)
+    output = utils.constant_image_value(default_image_obj(
+        landcover_source=landcover_value).landcover)
     assert output['cropland'] == expected
 
 
@@ -201,14 +200,14 @@ def test_Image_landcover_constant_value(landcover_value, expected):
     ]
 )
 def test_Image_landcover_point_value(xy, expected):
-    output = utils.point_image_value(default_image_obj().landcover, xy)
+    output = utils.point_image_value(default_image_obj(
+        landcover_source='USDA/NASS/CDL').landcover, xy)
     assert output['cropland'] == expected
 
 
 def test_Image_landcover_source_exception():
     with pytest.raises(ValueError):
-        utils.getinfo(model.Image(
-            default_image(), landcover_source='DEADBEEF').landcover)
+        utils.getinfo(default_image_obj(landcover_source='DEADBEEF').landcover)
 
 
 def test_Image_kc_properties():
@@ -232,9 +231,8 @@ def test_Image_kc_properties():
     ]
 )
 def test_Image_kc_constant_value(ndvi, landcover, expected, tol=0.0001):
-    args = default_image_args(ndvi=ndvi, landcover_source=landcover)
-    output_img = model.Image(**args).kc
-    output = utils.constant_image_value(output_img)
+    output = utils.constant_image_value(default_image_obj(
+        ndvi=ndvi, landcover_source=landcover).kc)
     assert abs(output['kc'] - expected) <= tol
 
 
@@ -242,6 +240,22 @@ def test_Image_kc_constant_value(ndvi, landcover, expected, tol=0.0001):
 # def test_Image_kc_default_value(ndvi=0.8, expected=1.0, tol=0.0001):
 #     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).kc)
 #     assert abs(output['kc'] - expected) <= tol
+
+
+def test_Image_etf_properties():
+    """Test if properties are set on the ETf image"""
+    output = utils.getinfo(default_image_obj().etf)
+    assert output['bands'][0]['id'] == 'etf'
+    assert output['properties']['system:index'] == SCENE_ID
+    assert output['properties']['system:time_start'] == SCENE_TIME
+    assert output['properties']['image_id'] == COLL_ID + SCENE_ID
+
+
+def test_Image_etf_constant_value():
+    # ETf method returns Kc
+    output = utils.constant_image_value(default_image_obj(
+        ndvi=0.8, landcover_source=1).etf)
+    assert abs(output['etf'] - 0.9859994736) <= 0.0001
 
 
 def test_Image_etr_constant_value(etr=10.0, tol=0.0001):
@@ -267,7 +281,7 @@ def test_Image_etr_source_exception():
 
 # CGM - I'm not sure why this is commented out
 # def test_Image_etr_band_exception():
-#     """Test that an Exception is raise for an invalid image ID"""
+#     """Test that an Exception is raise for an invalid etr band name"""
 #     with pytest.raises(Exception):
 #         utils.getinfo(default_image_obj(etr_band=None).etr)
 
@@ -282,8 +296,8 @@ def test_Image_et_properties():
 
 
 def test_Image_et_constant_value():
-    output = utils.constant_image_value(
-        default_image_obj(etr_source=10, etr_factor=1.0, landcover_source=1).et)
+    output = utils.constant_image_value(default_image_obj(
+        etr_source=10, etr_factor=1.0, landcover_source=1).et)
     assert abs(output['et'] - 10 * 0.986) <= 0.0001
 
 
@@ -321,18 +335,16 @@ def test_Image_calculate_variables_default():
 
 
 def test_Image_calculate_variables_custom():
-    variables = set(['ndvi'])
+    variables = ['ndvi']
     output = utils.getinfo(default_image_obj().calculate(variables))
-    assert set([x['id'] for x in output['bands']]) == variables
+    assert set([x['id'] for x in output['bands']]) == set(variables)
 
 
 def test_Image_calculate_variables_all():
-    variables = set(['et', 'etr', 'fc', 'kc', 'mask', 'ndvi', 'time'])
-    # variables = set([
-    #     'et', 'etr', 'fc', 'kc', 'landcover', 'mask', 'ndvi', 'time'])
-    output = utils.getinfo(
-        default_image_obj().calculate(variables=list(variables)))
-    assert set([x['id'] for x in output['bands']]) == variables
+    variables = ['et', 'etf', 'etr', 'fc', 'kc', 'mask', 'ndvi', 'time']
+    # variables = ['et', 'etr', 'fc', 'kc', 'landcover', 'mask', 'ndvi', 'time']
+    output = utils.getinfo(default_image_obj().calculate(variables=variables))
+    assert set([x['id'] for x in output['bands']]) == set(variables)
 
 
 def test_Image_from_landsat_c1_sr_default_image():
@@ -359,8 +371,8 @@ def test_Image_from_landsat_c1_sr_image_id(image_id):
 def test_Image_from_landsat_c1_sr_image():
     """Test instantiating the class from a Landsat ee.Image"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
-    output = utils.getinfo(
-        model.Image.from_landsat_c1_sr(ee.Image(image_id)).ndvi)
+    output = utils.getinfo(model.Image.from_landsat_c1_sr(
+        ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
