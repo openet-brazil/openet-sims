@@ -224,12 +224,17 @@ class Image():
 
         # Generic equation for trees
         kc3 = fc_zero.where(
-            self.landcover.eq(3), self.fc.multiply(1.48).add(0.007))
+            self.landcover.eq(3),
+            self.fc.multiply(1.48).add(0.007))
 
         # Add up all the Kcs
-        return kc1.add(kc2).add(kc3)\
-            .clamp(0, 1.25)\
-            .rename(['kc']).set(self._properties).double()
+        kc = kc1.add(kc2).add(kc3).clamp(0, 1.25)
+
+        # CGM - Set all non-ag cells to nodata
+        #   It might make more sense to do this to landcover
+        kc = kc.updateMask(self.landcover.gt(0))
+
+        return kc.rename(['kc']).set(self._properties).double()
 
     @lazy_property
     def landcover(self):

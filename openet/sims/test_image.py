@@ -250,6 +250,11 @@ def test_Image_kc_constant_value(ndvi, landcover, expected, tol=0.0001):
     assert abs(output['kc'] - expected) <= tol
 
 
+def test_Image_kc_constant_nodata():
+    output = utils.constant_image_value(default_image_obj(landcover_source=0).kc)
+    assert output['kc'] is None
+
+
 # CGM - This doesn't work because landcover defaults to CDL
 # def test_Image_kc_default_value(ndvi=0.8, expected=1.0, tol=0.0001):
 #     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).kc)
@@ -325,7 +330,8 @@ def test_Image_mask_properties():
 
 
 def test_Image_mask_constant_value():
-    output = utils.constant_image_value(default_image_obj().mask)
+    output = utils.constant_image_value(default_image_obj(
+        landcover_source=1).mask)
     assert output['mask'] == 1
 
 
@@ -339,7 +345,8 @@ def test_Image_time_properties():
 
 
 def test_Image_time_constant_value():
-    output = utils.constant_image_value(default_image_obj().time)
+    output = utils.constant_image_value(default_image_obj(
+        landcover_source=1).time)
     assert output['time'] == SCENE_TIME
 
 
