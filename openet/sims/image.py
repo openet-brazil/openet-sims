@@ -62,23 +62,22 @@ class Image():
             Reference ET scaling factor (the default is 1.0).
         landcover_source : str, optional
             Landcover source (the default is CDL).  The source should be an
-            Earth Engine Image ID (or ee.Image).  Currently only NLCD
+            Earth Engine Image ID (or ee.Image).  Currently only CDL
             landcovers are supported.
         landcover_band : str, optional
-            Landcover band (the default is None).  The source should be an
-            Earth Engine Image ID (or ee.Image).  Currently only NLCD
-            landcovers are supported.
+            Landcover band (the default is 'cropland').
 
         Notes
         -----
         Fc = (NDVI * 1.26) - 0.18
-        Journal reference for NDVI->Fc conversion equation:
-            Johnson, L. and T. Trout, 2012. Satellite NDVI assisted monitoring of
-            vegetable crop evapotranspiration in California's San Joaquin Valley. REM
-            Sens. 4:439-455. [EQN 1]
-
-        Kc = Fc based on crop type
+        Kc = f(Fc) [based on crop type]
         ETcb = Kc * ETo
+
+        References
+        ----------
+        .. [1] Johnson, L. and T. Trout, 2012. Satellite NDVI assisted
+            monitoring of vegetable crop evapotranspiration in California's San
+            Joaquin Valley. Remote Sensing 4:439-455. [EQN 1]
 
         """
         self.image = image
