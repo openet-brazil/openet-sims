@@ -460,7 +460,7 @@ class Collection():
         # Count will be determined using the aggregate_coll image masks
         if 'count' in variables:
             scene_vars.append('mask')
-            # scene_vars.remove('count')
+            scene_vars.remove('count')
 
         # Build initial scene image collection
         scene_coll = self._build(
