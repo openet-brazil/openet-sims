@@ -44,26 +44,25 @@ def default_image(ndvi=0.8):
 #   but these do not have defaults in the Image class init
 def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                        etr_band='etr', etr_factor=0.85,
-                       landcover_source='USDA/NASS/CDL',
-                       landcover_band='cropland'):
+                       crop_type_source='USDA/NASS/CDL',
+                       crop_type_remap='CDL'):
     return {
         'image': default_image(ndvi=ndvi),
         'etr_source': etr_source,
         'etr_band': etr_band,
         'etr_factor': etr_factor,
-        'landcover_source': landcover_source,
-        'landcover_band': landcover_band,
+        'crop_type_source': crop_type_source,
+        'crop_type_remap': crop_type_remap,
     }
 
 
 def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                       etr_band='etr', etr_factor=0.85,
-                      landcover_source='USDA/NASS/CDL',
-                      landcover_band='cropland'):
+                      crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL'):
     return model.Image(**default_image_args(
         ndvi=ndvi,
         etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
-        landcover_source=landcover_source, landcover_band=landcover_band))
+        crop_type_source=crop_type_source, crop_type_remap=crop_type_remap))
 
 
 def test_ee_init():
@@ -76,8 +75,7 @@ def test_Image_init_default_parameters():
     assert m.etr_source == None
     assert m.etr_band == None
     assert m.etr_factor == 1.0
-    assert m.landcover_source == 'USDA/NASS/CDL'
-    assert m.landcover_band == 'cropland'
+    assert m.crop_type_source == 'USDA/NASS/CDL'
 
 
 def test_Image_init_calculated_properties():
@@ -171,27 +169,103 @@ def test_Image_fc_constant_value(ndvi, expected, tol=0.0001):
 #     assert abs(output['fc'] - expected) <= tol
 
 
-def test_Image_landcover_properties():
-    """Test if properties are set on the landcover image"""
-    output = utils.getinfo(default_image_obj().landcover)
-    assert output['bands'][0]['id'] == 'cropland'
+def test_Image_crop_type_properties():
+    """Test if properties are set on the crop type image"""
+    output = utils.getinfo(default_image_obj().crop_type)
+    assert output['bands'][0]['id'] == 'crop_type'
+    # assert output['properties']['system:index'] == SCENE_ID
+    # assert output['properties']['system:time_start'] == SCENE_TIME
+    # assert output['properties']['image_id'] == COLL_ID + SCENE_ID
+
+
+def test_Image_crop_type_source_exception():
+    with pytest.raises(ValueError):
+        utils.getinfo(default_image_obj(crop_type_source='DEADBEEF').crop_type)
+
+
+def test_Image_crop_type_constant_value():
+    output = utils.constant_image_value(default_image_obj(
+        crop_type_source=10).crop_type)
+    assert output['crop_type'] == 10
+
+
+@pytest.mark.parametrize(
+    'year, expected',
+    [
+        [2007, 2008],
+        [2008, 2008],
+        [2019, 2018],
+    ]
+)
+def test_Image_crop_type_source_cdl_collection(year, expected):
+    """Test that CDL image collection is limited to 2008-2018"""
+    image_obj = default_image_obj(crop_type_source='USDA/NASS/CDL')
+    image_obj._year = ee.Number(year)
+    output = utils.getinfo(image_obj.crop_type)
+    assert output['properties']['id'] == 'USDA/NASS/CDL/{}'.format(expected)
+
+
+def test_Image_crop_type_source_cdl_image():
+    image_obj = default_image_obj(crop_type_source='USDA/NASS/CDL/2008')
+    output = utils.getinfo(image_obj.crop_type)
+    assert output['properties']['id'] == 'USDA/NASS/CDL/2008'
+
+
+def test_Image_crop_type_source_cdl_image_exception():
+    """Requesting a CDL image that doesn't exist should raise an EE exception"""
+    with pytest.raises(Exception):
+        utils.getinfo(default_image_obj(
+            crop_type_source='USDA/NASS/CDL/2099').crop_type)
+
+
+def test_Image_crop_type_source_openet_crop_type():
+    image_obj = default_image_obj(crop_type_source='projects/openet/crop_type')
+    output = utils.getinfo(image_obj.crop_type)
+    assert output['bands'][0]['id'] == 'crop_type'
+
+
+@pytest.mark.parametrize(
+    'crop_type_source, xy, expected',
+    [
+        # Test spots around the Five Points CIMIS station
+        ['USDA/NASS/CDL/2016', [-120.113, 36.336], 36],
+        ['USDA/NASS/CDL/2016', [-120.1073, 36.3309], 69],
+        ['USDA/NASS/CDL/2016', [-120.108, 36.3459], 204],
+        ['projects/openet/crop_type', [-120.108, 36.3459], 169],  # This value is nonsense
+    ]
+)
+def test_Image_crop_type_point_value(crop_type_source, xy, expected):
+    output = utils.point_image_value(default_image_obj(
+        crop_type_source=crop_type_source).crop_type, xy)
+    assert output['crop_type'] == expected
+
+
+def test_Image_crop_class_properties():
+    """Test if properties are set on the crop type image"""
+    output = utils.getinfo(default_image_obj().crop_class)
+    assert output['bands'][0]['id'] == 'crop_class'
     assert output['properties']['system:index'] == SCENE_ID
     assert output['properties']['system:time_start'] == SCENE_TIME
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
+def test_Image_crop_class_remap_exception():
+    with pytest.raises(ValueError):
+        utils.getinfo(default_image_obj(crop_type_remap='DEADBEEF').crop_class)
+
+
 @pytest.mark.parametrize(
-    'landcover_value, expected',
+    'crop_type_value, expected',
     [
         [1, 1],
         [69, 2],
         [66, 3],
     ]
 )
-def test_Image_landcover_constant_value(landcover_value, expected):
+def test_Image_crop_class_constant_value(crop_type_value, expected):
     output = utils.constant_image_value(default_image_obj(
-        landcover_source=landcover_value).landcover)
-    assert output['cropland'] == expected
+        crop_type_source=crop_type_value).crop_class)
+    assert output['crop_class'] == expected
 
 
 @pytest.mark.parametrize(
@@ -203,15 +277,10 @@ def test_Image_landcover_constant_value(landcover_value, expected):
         [[-120.108, 36.3459], 3],
     ]
 )
-def test_Image_landcover_point_value(xy, expected):
+def test_Image_crop_class_point_value(xy, expected):
     output = utils.point_image_value(default_image_obj(
-        landcover_source='USDA/NASS/CDL').landcover, xy)
-    assert output['cropland'] == expected
-
-
-def test_Image_landcover_source_exception():
-    with pytest.raises(ValueError):
-        utils.getinfo(default_image_obj(landcover_source='DEADBEEF').landcover)
+        crop_type_source='USDA/NASS/CDL/2016').crop_class, xy)
+    assert output['crop_class'] == expected
 
 
 def test_Image_kc_properties():
@@ -224,7 +293,7 @@ def test_Image_kc_properties():
 
 
 @pytest.mark.parametrize(
-    'ndvi, landcover, expected',
+    'ndvi, crop_type, expected',
     [
         # 1.26 * 0.8 - 0.18 = 0.828
         # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
@@ -244,18 +313,18 @@ def test_Image_kc_properties():
         [0.90, 66, 1.25],
     ]
 )
-def test_Image_kc_constant_value(ndvi, landcover, expected, tol=0.0001):
+def test_Image_kc_constant_value(ndvi, crop_type, expected, tol=0.0001):
     output = utils.constant_image_value(default_image_obj(
-        ndvi=ndvi, landcover_source=landcover).kc)
+        ndvi=ndvi, crop_type_source=crop_type).kc)
     assert abs(output['kc'] - expected) <= tol
 
 
 def test_Image_kc_constant_nodata():
-    output = utils.constant_image_value(default_image_obj(landcover_source=0).kc)
+    output = utils.constant_image_value(default_image_obj(crop_type_source=0).kc)
     assert output['kc'] is None
 
 
-# CGM - This doesn't work because landcover defaults to CDL
+# CGM - This doesn't work because crop_type defaults to CDL
 # def test_Image_kc_default_value(ndvi=0.8, expected=1.0, tol=0.0001):
 #     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).kc)
 #     assert abs(output['kc'] - expected) <= tol
@@ -273,7 +342,7 @@ def test_Image_etf_properties():
 def test_Image_etf_constant_value():
     # ETf method returns Kc
     output = utils.constant_image_value(default_image_obj(
-        ndvi=0.8, landcover_source=1).etf)
+        ndvi=0.8, crop_type_source=1).etf)
     assert abs(output['etf'] - 0.9859994736) <= 0.0001
 
 
@@ -316,7 +385,7 @@ def test_Image_et_properties():
 
 def test_Image_et_constant_value():
     output = utils.constant_image_value(default_image_obj(
-        etr_source=10, etr_factor=1.0, landcover_source=1).et)
+        etr_source=10, etr_factor=1.0, crop_type_source=1).et)
     assert abs(output['et'] - 10 * 0.986) <= 0.0001
 
 
@@ -331,7 +400,7 @@ def test_Image_mask_properties():
 
 def test_Image_mask_constant_value():
     output = utils.constant_image_value(default_image_obj(
-        landcover_source=1).mask)
+        crop_type_source=1).mask)
     assert output['mask'] == 1
 
 
@@ -346,7 +415,7 @@ def test_Image_time_properties():
 
 def test_Image_time_constant_value():
     output = utils.constant_image_value(default_image_obj(
-        landcover_source=1).time)
+        crop_type_source=1).time)
     assert output['time'] == SCENE_TIME
 
 
@@ -363,7 +432,7 @@ def test_Image_calculate_variables_custom():
 
 def test_Image_calculate_variables_all():
     variables = ['et', 'etf', 'etr', 'fc', 'kc', 'mask', 'ndvi', 'time']
-    # variables = ['et', 'etr', 'fc', 'kc', 'landcover', 'mask', 'ndvi', 'time']
+    # variables = ['et', 'etr', 'fc', 'kc', 'crop_type', 'mask', 'ndvi', 'time']
     output = utils.getinfo(default_image_obj().calculate(variables=variables))
     assert set([x['id'] for x in output['bands']]) == set(variables)
 
