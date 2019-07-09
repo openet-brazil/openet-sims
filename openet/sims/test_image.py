@@ -142,33 +142,6 @@ def test_Image_fc_properties():
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
-@pytest.mark.parametrize(
-    'ndvi, expected',
-    [
-        [0.8, 0.828],
-        [0.7, 0.702],
-        [0.2, 0.072],
-        # Check if low NDVI Fc values are clamped
-        [0.1, 0.0],
-        [0.0, 0.0],
-        [-0.1, 0.0],
-        # Check if high NDVI Fc values are clamped
-        [0.95, 1.0],
-    ]
-)
-def test_Image_fc_constant_value(ndvi, expected, tol=0.0001):
-    args = default_image_args(ndvi=ndvi)
-    output_img = model.Image(**args).fc
-    output = utils.constant_image_value(output_img)
-    assert abs(output['fc'] - expected) <= tol
-
-
-# CGM - I'm not sure what the value of this test is
-# def test_Image_fc_default_value(ndvi=0.8, expected=0.828, tol=0.0001):
-#     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).fc)
-#     assert abs(output['fc'] - expected) <= tol
-
-
 def test_Image_crop_type_properties():
     """Test if properties are set on the crop type image"""
     output = utils.getinfo(default_image_obj().crop_type)
@@ -176,52 +149,6 @@ def test_Image_crop_type_properties():
     # assert output['properties']['system:index'] == SCENE_ID
     # assert output['properties']['system:time_start'] == SCENE_TIME
     # assert output['properties']['image_id'] == COLL_ID + SCENE_ID
-
-
-def test_Image_crop_type_source_exception():
-    with pytest.raises(ValueError):
-        utils.getinfo(default_image_obj(crop_type_source='DEADBEEF').crop_type)
-
-
-def test_Image_crop_type_constant_value():
-    output = utils.constant_image_value(default_image_obj(
-        crop_type_source=10).crop_type)
-    assert output['crop_type'] == 10
-
-
-@pytest.mark.parametrize(
-    'year, expected',
-    [
-        [2007, 2008],
-        [2008, 2008],
-        [2019, 2018],
-    ]
-)
-def test_Image_crop_type_source_cdl_collection(year, expected):
-    """Test that CDL image collection is limited to 2008-2018"""
-    image_obj = default_image_obj(crop_type_source='USDA/NASS/CDL')
-    image_obj._year = ee.Number(year)
-    output = utils.getinfo(image_obj.crop_type)
-    assert output['properties']['id'] == 'USDA/NASS/CDL/{}'.format(expected)
-
-
-def test_Image_crop_type_source_cdl_image():
-    image_obj = default_image_obj(crop_type_source='USDA/NASS/CDL/2008')
-    output = utils.getinfo(image_obj.crop_type)
-    assert output['properties']['id'] == 'USDA/NASS/CDL/2008'
-
-
-def test_Image_crop_type_source_cdl_image_exception():
-    """Requesting a CDL image that doesn't exist should raise an EE exception"""
-    with pytest.raises(Exception):
-        utils.getinfo(default_image_obj(
-            crop_type_source='USDA/NASS/CDL/2099').crop_type)
-
-
-def test_Image_crop_type_source_openet_crop_type():
-    image_obj = default_image_obj(crop_type_source='projects/openet/crop_type')
-    output = utils.getinfo(image_obj.crop_type)
-    assert output['bands'][0]['id'] == 'crop_type'
 
 
 @pytest.mark.parametrize(
@@ -249,25 +176,6 @@ def test_Image_crop_class_properties():
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
-def test_Image_crop_class_remap_exception():
-    with pytest.raises(ValueError):
-        utils.getinfo(default_image_obj(crop_type_remap='DEADBEEF').crop_class)
-
-
-@pytest.mark.parametrize(
-    'crop_type_value, expected',
-    [
-        [1, 1],
-        [69, 2],
-        [66, 3],
-    ]
-)
-def test_Image_crop_class_constant_value(crop_type_value, expected):
-    output = utils.constant_image_value(default_image_obj(
-        crop_type_source=crop_type_value).crop_class)
-    assert output['crop_class'] == expected
-
-
 @pytest.mark.parametrize(
     'xy, expected',
     [
@@ -290,44 +198,6 @@ def test_Image_kc_properties():
     assert output['properties']['system:index'] == SCENE_ID
     assert output['properties']['system:time_start'] == SCENE_TIME
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
-
-
-@pytest.mark.parametrize(
-    'ndvi, crop_type, expected',
-    [
-        # 1.26 * 0.8 - 0.18 = 0.828
-        # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
-        [0.8, 1, 0.9859994736],
-        [0.7, 69, 0.702 * 1.7],
-        [0.8, 66, 0.828 * 1.48 + 0.007],
-        [0.2, 1, 0.2486651136],
-        # Test if low NDVI Kc values are clamped
-        # Fc for NDVI of 0.1 should be clamped to 0.0
-        [0.1, 1, 0.15],
-        [0.1, 69, 0.0],
-        [0.1, 66, 0.007],
-        # Test if high NDVI Kc values are clamped
-        # Kc for class 1 can never get to clamp limit since NDVI <= 1
-        [1.0, 1, 1.0776],
-        [0.90, 69, 1.25],
-        [0.90, 66, 1.25],
-    ]
-)
-def test_Image_kc_constant_value(ndvi, crop_type, expected, tol=0.0001):
-    output = utils.constant_image_value(default_image_obj(
-        ndvi=ndvi, crop_type_source=crop_type).kc)
-    assert abs(output['kc'] - expected) <= tol
-
-
-def test_Image_kc_constant_nodata():
-    output = utils.constant_image_value(default_image_obj(crop_type_source=0).kc)
-    assert output['kc'] is None
-
-
-# CGM - This doesn't work because crop_type defaults to CDL
-# def test_Image_kc_default_value(ndvi=0.8, expected=1.0, tol=0.0001):
-#     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).kc)
-#     assert abs(output['kc'] - expected) <= tol
 
 
 def test_Image_etf_properties():
