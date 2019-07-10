@@ -154,107 +154,6 @@ def fc(ndvi, fc_min=0.0, fc_max=1.0):
         .rename(['fc'])
 
 
-# CGM - I really don't think passing the openet.sims.image object makes sense
-#   Doing that really hides what the inputs to the model are and it doesn't
-#   seem like it is needed since it is only a few parameters are being used
-#   (fc, ndvi, crop_class, etc.).
-def kc_crop_specific(img, zero, crop_class_num, crop_type_num, kc_min=0.15):
-    """Crop coefficient (Kc) calculation for a single crop
-
-    Parameters
-    ----------
-    img : openet.sims.Image
-    zero : ee.Image
-    crop_class_num : int
-    crop_type_num : int
-    kc_min : float, optional
-
-    Returns
-    -------
-    ee.Image
-
-    """
-
-    crop_prof = kc_help.make_profile(crop_type_num)
-    # CGM - crop_pixels isn't being used in this function?
-    crop_pixels = img.crop_type.eq(crop_type_num)
-
-    # Vine
-    if crop_type_num == 69:
-        kd = img.fc.multiply(1.5)\
-            .min(img.fc.pow(1 / (1 + 2)))\
-            .min(1)
-
-    # Trees
-    elif crop_class_num == 3:
-        # Generic tree - crop_type_num doesn't have specific coefficients
-        if crop_prof.h_max == -999:
-            kc_gen = zero.where(
-            img.crop_type.eq(crop_type_num),
-            img.fc.multiply(1.48).add(0.007))
-            return kc_gen
-        # Tree-specific coefficients
-        else:
-            # kd where fc > .5
-            kd1 = zero.where(img.fc.gt(0.5),
-                img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
-                    .min(1))
-
-            # kd where fc <= .5
-            kd2 = zero.where(img.fc.lte(0.5),
-                img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1 / (1 + (crop_prof.h_max - 1))))\
-                    .min(1))
-
-            kd = kd1.add(kd2)
-
-    # Row crops
-    elif crop_class_num == 1:
-        if crop_prof.h_max == -999:
-            # Generic equation for annual crops
-            img_expr = img.fc.expression(
-                "((b('fc') ** 2) * -0.4771) + (1.4047 * b('fc')) + 0.15")
-            kc_gen = zero.where(img.crop_type.eq(crop_type_num), img_expr)
-            return kc_gen
-        else:
-            # h = h_max*min((fc/0.7),1)
-            kd1 = zero.where(img.fc.divide(0.7).lte(1),
-                img.fc.multiply(crop_prof.m_l)\
-                    .min(\
-                        img.fc.pow(
-                            img.fc.divide(0.7)\
-                                .multiply(crop_prof.h_max)\
-                                .pow(-1)\
-                                .add(1)\
-                        )\
-                    )\
-                    .min(1))
-
-            kd2 = zero.where(img.fc.divide(0.7).gt(1),
-                img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
-                    .min(1))
-            kd = kd1.add(kd2)
-
-    # CGM - I think DOY should be an input to this function instead of derived
-    #   here from img._date
-    #try:
-    doy = img._date.getRelative('day','year')
-    #except:
-    #    # print("DOY error for %s, setting to 20" )
-    #    doy = 20
-
-    kc_spec = zero.where(
-        img.crop_type.eq(crop_type_num),
-        kd.multiply(kc_help.make_kcb_full(doy, crop_prof).subtract(kc_min))\
-            .add(kc_min)\
-            .clamp(0, 1.1)
-    )
-
-    return kc_spec
-
-
 # CGM - crop class is not being used directly here and is being read from img
 def kc(img, crop_class):
     """Crop coefficient (Kc)
@@ -355,3 +254,158 @@ def kc(img, crop_class):
     kc = kc.updateMask(img.crop_class.gt(0))
 
     return kc.rename(['kc']).set(img._properties).double()
+
+
+# CGM - I really don't think passing the openet.sims.image object makes sense
+#   Doing that really hides what the inputs to the model are and it doesn't
+#   seem like it is needed since it is only a few parameters are being used
+#   (fc, ndvi, crop_class, etc.).
+def kc_crop_specific(img, zero, crop_class_num, crop_type_num, kc_min=0.15):
+    """Crop coefficient (Kc) calculation for a single crop
+
+    Parameters
+    ----------
+    img : openet.sims.Image
+    zero : ee.Image
+    crop_class_num : int
+    crop_type_num : int
+    kc_min : float, optional
+
+    Returns
+    -------
+    ee.Image
+
+    """
+
+    crop_prof = kc_help.make_profile(crop_type_num)
+    # CGM - crop_pixels isn't being used in this function?
+    crop_pixels = img.crop_type.eq(crop_type_num)
+
+    # Vine
+    if crop_type_num == 69:
+        kd = img.fc.multiply(1.5)\
+            .min(img.fc.pow(1 / (1 + 2)))\
+            .min(1)
+
+    # Trees
+    elif crop_class_num == 3:
+        # Generic tree - crop_type_num doesn't have specific coefficients
+        if crop_prof.h_max == -999:
+            kc_gen = zero.where(
+            img.crop_type.eq(crop_type_num),
+            img.fc.multiply(1.48).add(0.007))
+            return kc_gen
+        # Tree-specific coefficients
+        else:
+            # kd where fc > .5
+            kd1 = zero.where(img.fc.gt(0.5),
+                img.fc.multiply(crop_prof.m_l)\
+                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
+                    .min(1))
+
+            # kd where fc <= .5
+            kd2 = zero.where(img.fc.lte(0.5),
+                img.fc.multiply(crop_prof.m_l)\
+                    .min(img.fc.pow(1 / (1 + (crop_prof.h_max - 1))))\
+                    .min(1))
+
+            kd = kd1.add(kd2)
+
+    # Row crops
+    elif crop_class_num == 1:
+        if crop_prof.h_max == -999:
+            # Generic equation for annual crops
+            img_expr = img.fc.expression(
+                "((b('fc') ** 2) * -0.4771) + (1.4047 * b('fc')) + 0.15")
+            kc_gen = zero.where(img.crop_type.eq(crop_type_num), img_expr)
+            return kc_gen
+        else:
+            # h = h_max*min((fc/0.7),1)
+            kd1 = zero.where(img.fc.divide(0.7).lte(1),
+                img.fc.multiply(crop_prof.m_l)\
+                    .min(\
+                        img.fc.pow(
+                            img.fc.divide(0.7)\
+                                .multiply(crop_prof.h_max)\
+                                .pow(-1)\
+                                .add(1)\
+                        )\
+                    )\
+                    .min(1))
+
+            kd2 = zero.where(img.fc.divide(0.7).gt(1),
+                img.fc.multiply(crop_prof.m_l)\
+                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
+                    .min(1))
+            kd = kd1.add(kd2)
+
+    # CGM - I think DOY should be an input to this function instead of derived
+    #   here from img._date
+    #try:
+    doy = img._date.getRelative('day','year')
+    #except:
+    #    # print("DOY error for %s, setting to 20" )
+    #    doy = 20
+
+    kc_spec = zero.where(
+        img.crop_type.eq(crop_type_num),
+        kd.multiply(kc_help.kcb_full(doy, crop_prof).subtract(kc_min))\
+            .add(kc_min)\
+            .clamp(0, 1.1)
+    )
+
+    return kc_spec
+
+
+def kcb_full(doy, crop_prof):
+    """Basal crop coefficient (Kcb) for a given crop on day-of-year.
+
+    Parameters
+    ----------
+    doy : int
+    crop_prof : CropProfile
+
+    Returns
+    -------
+    ee.Number
+
+    """
+    return ee.Number(fr(doy, crop_prof))\
+        .multiply(min(1 + 0.1 * crop_prof.h_max, 1.2))
+
+
+def fr(doy, crop_prof):
+    """Reduction factor (f_r) for adjusting Kcb of tree crops
+
+    Estimated using a mean leaf stomatal resistance term.
+
+    Parameters
+    ----------
+    doy : int
+    crop_prof : CropProfile
+
+    Returns
+    -------
+    ee.Number
+
+    """
+    doy_gt_ls_stop = ee.Algorithms.If(
+        doy.gt(crop_prof.ls_stop), crop_prof.fr_end, 0)
+
+    doy_geq_ls_start_and_doy_leq_ls_stop = ee.Algorithms.If(
+        doy.gte(crop_prof.ls_start).And(doy.lte(crop_prof.ls_stop)),
+        ee.Number(crop_prof.fr_mid)\
+            .subtract(
+                (doy.subtract(crop_prof.ls_start))\
+                .divide(crop_prof.ls_stop - crop_prof.ls_start)\
+                .multiply(crop_prof.fr_mid - crop_prof.fr_end)
+            ),
+        doy_gt_ls_stop)
+
+    doy_lt_ls_start = ee.Algorithms.If(
+        doy.lt(crop_prof.ls_start), crop_prof.fr_mid,
+        doy_geq_ls_start_and_doy_leq_ls_stop)
+
+    fr = ee.Algorithms.If(crop_prof.crop_class == 1, 1, doy_lt_ls_start)
+
+    return fr
