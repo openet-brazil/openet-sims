@@ -106,6 +106,9 @@ class Image():
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
 
+        # kc_min for all crops
+        self._kc_min = .15
+
     def calculate(self, variables=['et']):
         """Return a multiband image of calculated variables
 
@@ -258,7 +261,7 @@ class Image():
         ee.Image
 
         """
-        return model.kc(self.fc, self.crop_class)\
+        return model.kc(self, self.crop_class)\
             .rename(['kc']).set(self._properties).double()
 
 
