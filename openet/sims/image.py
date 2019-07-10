@@ -106,8 +106,11 @@ class Image():
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
 
+        # CGM - I would only add this here if you are also going to make it a
+        #   parameter that can be set on the Image class, otherwise it really
+        #   doesn't need to be set here and can be set in model.py instead.
         # kc_min for all crops
-        self._kc_min = .15
+        # self._kc_min = .15
 
     def calculate(self, variables=['et']):
         """Return a multiband image of calculated variables

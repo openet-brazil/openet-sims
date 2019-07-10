@@ -153,41 +153,63 @@ def fc(ndvi, fc_min=0.0, fc_max=1.0):
         .clamp(fc_min, fc_max)\
         .rename(['fc'])
 
-def kc_crop_specific(img, zero, crop_class_num, crop_type_num):
+
+# CGM - I really don't think passing the openet.sims.image object makes sense
+#   Doing that really hides what the inputs to the model are and it doesn't
+#   seem like it is needed since it is only a few parameters are being used
+#   (fc, ndvi, crop_class, etc.).
+def kc_crop_specific(img, zero, crop_class_num, crop_type_num, kc_min=0.15):
+    """Crop coefficient (Kc) calculation for a single crop
+
+    Parameters
+    ----------
+    img : openet.sims.Image
+    zero : ee.Image
+    crop_class_num : int
+    crop_type_num : int
+    kc_min : float, optional
+
+    Returns
+    -------
+    ee.Image
+
+    """
+
     crop_prof = kc_help.make_profile(crop_type_num)
+    # CGM - crop_pixels isn't being used in this function?
     crop_pixels = img.crop_type.eq(crop_type_num)
 
-    # vine
+    # Vine
     if crop_type_num == 69:
         kd = img.fc.multiply(1.5)\
-                .min(img.fc.pow(1/(1+2)))\
-                .min(1)
+            .min(img.fc.pow(1 / (1 + 2)))\
+            .min(1)
 
-    # trees
+    # Trees
     elif crop_class_num == 3:
-        # generic tree - crop_type_num doesn't have specific coeffs
+        # Generic tree - crop_type_num doesn't have specific coefficients
         if crop_prof.h_max == -999:
             kc_gen = zero.where(
             img.crop_type.eq(crop_type_num),
             img.fc.multiply(1.48).add(0.007))
             return kc_gen
-        # tree-specific coeffs
+        # Tree-specific coefficients
         else:
             # kd where fc > .5
-            kd1 = zero.where(img.fc.gt(.5),
+            kd1 = zero.where(img.fc.gt(0.5),
                 img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1/(1+crop_prof.h_max)))\
+                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
                     .min(1))
 
             # kd where fc <= .5
-            kd2 = zero.where(img.fc.lte(.5),
+            kd2 = zero.where(img.fc.lte(0.5),
                 img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1/(1+(crop_prof.h_max-1))))\
+                    .min(img.fc.pow(1 / (1 + (crop_prof.h_max - 1))))\
                     .min(1))
 
             kd = kd1.add(kd2)
 
-    # row crops
+    # Row crops
     elif crop_class_num == 1:
         if crop_prof.h_max == -999:
             # Generic equation for annual crops
@@ -197,11 +219,11 @@ def kc_crop_specific(img, zero, crop_class_num, crop_type_num):
             return kc_gen
         else:
             # h = h_max*min((fc/0.7),1)
-            kd1 = zero.where(img.fc.divide(.7).lte(1),
+            kd1 = zero.where(img.fc.divide(0.7).lte(1),
                 img.fc.multiply(crop_prof.m_l)\
                     .min(\
                         img.fc.pow(
-                            img.fc.divide(.7)\
+                            img.fc.divide(0.7)\
                                 .multiply(crop_prof.h_max)\
                                 .pow(-1)\
                                 .add(1)\
@@ -209,24 +231,31 @@ def kc_crop_specific(img, zero, crop_class_num, crop_type_num):
                     )\
                     .min(1))
 
-            kd2 = zero.where(img.fc.divide(.7).gt(1),
+            kd2 = zero.where(img.fc.divide(0.7).gt(1),
                 img.fc.multiply(crop_prof.m_l)\
-                    .min(img.fc.pow(1/(1+crop_prof.h_max)))\
+                    .min(img.fc.pow(1 / (1 + crop_prof.h_max)))\
                     .min(1))
             kd = kd1.add(kd2)
 
+    # CGM - I think DOY should be an input to this function instead of derived
+    #   here from img._date
     #try:
     doy = img._date.getRelative('day','year')
     #except:
     #    # print("DOY error for %s, setting to 20" )
     #    doy = 20
-    kc_spec = zero.where(img.crop_type.eq(crop_type_num), 
-            (kd.multiply(kc_help.make_kcb_full(doy,crop_prof).subtract(img._kc_min))\
-                .add(img._kc_min))\
-            .clamp(0,1.1))
+
+    kc_spec = zero.where(
+        img.crop_type.eq(crop_type_num),
+        kd.multiply(kc_help.make_kcb_full(doy, crop_prof).subtract(kc_min))\
+            .add(kc_min)\
+            .clamp(0, 1.1)
+    )
 
     return kc_spec
 
+
+# CGM - crop class is not being used directly here and is being read from img
 def kc(img, crop_class):
     """Crop coefficient (Kc)
 
@@ -267,16 +296,15 @@ def kc(img, crop_class):
         [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals from Table 2; 5a (Kcb)]
 
     """
-    # I haven't implemented the crop-specific equations for this version.
-    # We would first run the crop-specific before doing the generic equations
     fc_zero = img.fc.multiply(0)
 
     # Crop-specific vine kc
     kc2 = kc_crop_specific(img, fc_zero, 2, 69)
 
     # Try crop-specific kc for trees, default back to generic
-    tree_nums = [66,67,68,70,71,72,73,74,75,76,77,201,203,204,
-            210,211,212,215,217,218,220,223]
+    tree_nums = [
+        66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
+        201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223]
 
     trees_collec = ee.ImageCollection(\
             list(map(\
@@ -287,12 +315,20 @@ def kc(img, crop_class):
     kc3 = trees_collec.reduce(ee.Reducer.sum())
 
     # Try crop-specific kc for field crops, default back to generic
-    field_nums = [1,2,3,4,5,6,10,11,12,13,14,21,22,23,24,25,26,27,28,
-            29,30,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,
-            49,50,51,52,53,54,55,56,57,58,59,60,61,80,182,202,205,206,
-            207,208,209,213,214,216,219,221,222,224,225,226,227,228,
-            229,230,231,232,233,234,235,236,237,238,239,240,241,242,
-            243,244,245,246,247,248,249,250,254]
+    field_nums = [
+        1, 2, 3, 4, 5, 6,
+        10, 11, 12, 13, 14,
+        21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+        41, 42, 43, 44, 45, 46, 47, 48, 49,
+        50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+        60, 61, 80, 182,
+        202, 205, 206, 207, 208, 209,
+        213, 214, 216, 219,
+        221, 222, 224, 225, 226, 227, 228, 229,
+        230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+        240, 241, 242, 243, 244, 245, 246, 247, 248, 249,
+        250, 254]
 
     field_collec = ee.ImageCollection(\
             list(map(\
@@ -303,7 +339,7 @@ def kc(img, crop_class):
     kc1 = field_collec.reduce(ee.Reducer.sum())
 
     # Dealing with rice fields. For next version we'll do something
-    # more sofisticated. For now anything with ndvi less than 0.14
+    # more sophisticated. For now anything with ndvi less than 0.14
     # gets a kc of 1.05
     mask_rice = img.ndvi.lte(0.14).And(img.crop_class.eq(5))
     kc5 = kc1.where(mask_rice, 1.05)
@@ -319,5 +355,3 @@ def kc(img, crop_class):
     kc = kc.updateMask(img.crop_class.gt(0))
 
     return kc.rename(['kc']).set(img._properties).double()
-
-

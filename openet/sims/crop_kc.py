@@ -1,11 +1,15 @@
 from collections import namedtuple
+
 import ee
 
-CropProfile = namedtuple('CropProfile', ['crop_class','h_max', 'm_l','fr_mid',
-    'fr_end','ls_start', 'ls_stop'])
+
+CropProfile = namedtuple(
+    'CropProfile',
+    ['crop_class', 'h_max', 'm_l', 'fr_mid', 'fr_end', 'ls_start', 'ls_stop'])
+
 
 def make_profile(classVal):
-    """ Return the CropProfile for a given crop type.
+    """Return the CropProfile for a given crop type.
 
     Parameters
     ----------
@@ -19,17 +23,17 @@ def make_profile(classVal):
 
     """
  
-    #vine
+    # Vine
     if classVal ==  69:   return CropProfile(2,2,1.5,0.95,0.51,205.0,265.0)
         
-    # trees
-    if classVal ==  75:   return CropProfile(3,4,1.5,0.81,0.59,270.0,300.0)
+    # Trees
+    elif classVal ==  75:   return CropProfile(3,4,1.5,0.81,0.59,270.0,300.0)
     elif classVal ==  68:   return CropProfile(3,3,2,0.95,0.75,270.0,300.0)
     elif classVal ==  77:   return CropProfile(3,3,2,0.95,0.75,270.0,300.0)
     elif classVal ==  66:   return CropProfile(3,3,2,0.95,0.75,270.0,300.0)
     elif classVal ==  223:   return CropProfile(3,3,1.5,1.0,0.71,270.0,300.0)
     elif classVal ==  67:   return CropProfile(3,3,1.5,1.0,0.71,270.0,300.0)
-    #Using same coeff as citrus for orange
+    # Using same coeff as citrus for orange
     elif classVal ==  212:   return CropProfile(3,2.5,1.5,0.71,0.94,270.0,365.0)
     elif classVal ==  72:   return CropProfile(3,2.5,1.5,0.71,0.94,270,365.0)
     elif classVal ==  211:   return CropProfile(3,4,1.5,0.48,0.46,240,330.0)
@@ -38,7 +42,7 @@ def make_profile(classVal):
     elif classVal ==  141:   return CropProfile(3,4,1.5,0.88,0.62,270,300.0)
     elif classVal ==  142:   return CropProfile(3,3,1.5,0.67,0.71,270,365.0)
 
-    #field crops
+    # Field crops
     elif classVal ==  214:   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     elif classVal ==  243:   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
@@ -53,12 +57,14 @@ def make_profile(classVal):
     #elif classVal ==  :   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     elif classVal ==  246:   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.37,2,1,-9999,-9999,-9999)
-    #veg, solanum family
+
+    # Veg, solanum family
     elif classVal ==  248:   return CropProfile(1,0.8,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.7,2,1,-9999,-9999,-9999)
     elif classVal ==  54:   return CropProfile(1,0.6,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.7,2,1,-9999,-9999,-9999)
-    #veg, cucurb family
+
+    # Veg, cucurb family
     elif classVal ==  209:   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     elif classVal ==  228:   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     elif classVal ==  229:   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
@@ -68,7 +74,8 @@ def make_profile(classVal):
     #elif classVal ==  :   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     elif classVal ==  48:   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.35,2,1,-9999,-9999,-9999)
-    #roots & tubers
+
+    # Roots & tubers
     #elif classVal ==  :   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,1,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,1.5,2,1,-9999,-9999,-9999)
@@ -79,7 +86,8 @@ def make_profile(classVal):
     #elif classVal ==  :   return CropProfile(1,0.6,2,1,-9999,-9999,-9999)
     elif classVal ==  41:   return CropProfile(1,0.5,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.675,2,1,-9999,-9999,-9999)
-    #legumes
+
+    # Legumes
     #elif classVal ==  :   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     elif classVal ==  42:   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
     elif classVal ==  51:   return CropProfile(1,0.4,2,1,-9999,-9999,-9999)
@@ -91,13 +99,15 @@ def make_profile(classVal):
     elif classVal ==  53:   return CropProfile(1,0.5,2,1,-9999,-9999,-9999)
     elif classVal ==  5:   return CropProfile(1,0.5,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.51,2,1,-9999,-9999,-9999)
-    #peren veg
+
+    # Perennial veg
     #elif classVal ==  :   return CropProfile(1,0.7,2,1,-9999,-9999,-9999)
     elif classVal ==  207:   return CropProfile(1,0.5,2,1,-9999,-9999,-9999)
     elif classVal ==  14:   return CropProfile(1,0.7,2,1,-9999,-9999,-9999)
     elif classVal ==  221:   return CropProfile(1,0.2,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.525,2,1,-9999,-9999,-9999)
-    #fiber
+
+    # Fiber
     elif classVal ==  2:   return CropProfile(1,1.35,2,1,-9999,-9999,-9999)
     elif classVal ==  32:   return CropProfile(1,1.2,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,1.5,2,1,-9999,-9999,-9999)
@@ -109,7 +119,8 @@ def make_profile(classVal):
     #elif classVal ==  :   return CropProfile(1,1,2,1,-9999,-9999,-9999)
     elif classVal ==  6:   return CropProfile(1,2,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.94,2,1,-9999,-9999,-9999)
-    #cereal
+
+    # Cereal
     elif classVal ==  21:   return CropProfile(1,1,2,1,-9999,-9999,-9999)
     elif classVal ==  28:   return CropProfile(1,1,2,1,-9999,-9999,-9999)
     elif classVal ==  23:   return CropProfile(1,1,2,1,-9999,-9999,-9999)
@@ -121,24 +132,28 @@ def make_profile(classVal):
     #elif classVal ==  :   return CropProfile(1,3,2,1,-9999,-9999,-9999)
     elif classVal ==  3:   return CropProfile(1,1,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,1.45,2,1,-9999,-9999,-9999)
-    #forage
+
+    # Forage
     elif classVal ==  36:   return CropProfile(1,0.7,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.35,2,1,-9999,-9999,-9999)
     elif classVal ==  58:   return CropProfile(1,0.6,2,1,-9999,-9999,-9999)
     elif classVal ==  27:   return CropProfile(1,0.3,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,1.2,2,1,-9999,-9999,-9999)
     elif classVal ==  62:   return CropProfile(1,0.2,2,1,-9999,-9999,-9999)
-    #Duplicating grazing pasture as pasture/hay
+
+    # Duplicating grazing pasture as pasture/hay
     elif classVal ==  181:   return CropProfile(1,0.2,2,1,-9999,-9999,-9999)
-    #Duplicating Other Hay/Non Alfalfa as pasture/hay
+    # Duplicating Other Hay/Non Alfalfa as pasture/hay
     #elif classVal ==  37:   return CropProfile(1,0.2,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.1,2,1,-9999,-9999,-9999)
     #elif classVal ==  :   return CropProfile(1,0.49,2,1,-9999,-9999,-9999)
 
+    # CGM - Should these be -9999 instead of -999?
     else: return CropProfile(-999,-999,-999,-999,-999,-999,-999)
 
+
 def make_kcb_full(doy, crop_prof):
-    """ Make k_cb for a given crop on day-of-year.
+    """Basal crop coefficient (Kcb) for a given crop on day-of-year.
 
     Parameters
     ----------
@@ -151,10 +166,13 @@ def make_kcb_full(doy, crop_prof):
 
     """
     return ee.Number(make_fr(doy, crop_prof))\
-        .multiply(min(1+.1*crop_prof.h_max,1.2))
+        .multiply(min(1 + 0.1 * crop_prof.h_max, 1.2))
+
 
 def make_fr(doy, crop_prof):
-    """ Make f_r, which is used to compute k_cb.
+    """Reduction factor (f_r) for adjusting Kcb of tree crops
+
+    Estimated using a mean leaf stomatal resistance term.
 
     Parameters
     ----------
@@ -166,8 +184,8 @@ def make_fr(doy, crop_prof):
     ee.Number
 
     """
-    doy_gt_ls_stop = ee.Algorithms.If(doy.gt(crop_prof.ls_stop),
-        crop_prof.fr_end, 0)
+    doy_gt_ls_stop = ee.Algorithms.If(
+        doy.gt(crop_prof.ls_stop), crop_prof.fr_end, 0)
 
     doy_geq_ls_start_and_doy_leq_ls_stop = ee.Algorithms.If(
         doy.gte(crop_prof.ls_start).And(doy.lte(crop_prof.ls_stop)),
@@ -179,8 +197,9 @@ def make_fr(doy, crop_prof):
             ),
         doy_gt_ls_stop)
 
-    doy_lt_ls_start = ee.Algorithms.If(doy.lt(crop_prof.ls_start), crop_prof.fr_mid,
-            doy_geq_ls_start_and_doy_leq_ls_stop)
+    doy_lt_ls_start = ee.Algorithms.If(
+        doy.lt(crop_prof.ls_start), crop_prof.fr_mid,
+        doy_geq_ls_start_and_doy_leq_ls_stop)
 
     fr = ee.Algorithms.If(crop_prof.crop_class == 1, 1, doy_lt_ls_start)
 
