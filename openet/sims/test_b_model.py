@@ -91,6 +91,7 @@ def test_Image_crop_class_remap_exception():
     'crop_type_value, expected',
     [
         [1, 1],
+        [3, 1],  # Rice
         [69, 2],
         [66, 3],
     ]
@@ -101,6 +102,21 @@ def test_Image_crop_class_constant_value(crop_type_value, expected):
         crop_type_remap='CDL'))
     assert output['crop_class'] == expected
     # assert output['remapped'] == expected
+
+
+
+
+def test_kcb_full():
+    assert False
+
+
+def test_fr():
+    assert False
+
+
+
+
+
 
 
 @pytest.mark.parametrize(
@@ -142,3 +158,7 @@ def test_Image_kc_constant_value(fc, crop_class, expected, tol=0.0001):
 # def test_Image_kc_default_value(ndvi=0.8, expected=1.0, tol=0.0001):
 #     output = utils.constant_image_value(default_image_obj(ndvi=ndvi).kc)
 #     assert abs(output['kc'] - expected) <= tol
+
+
+
+

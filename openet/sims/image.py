@@ -44,6 +44,7 @@ class Image():
             etr_factor=1.0,
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
+            crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             ):
         """Construct a SIMS model based ET Image
 
@@ -67,11 +68,14 @@ class Image():
             Currently only the OpenET collection and CDL images are supported.
         crop_type_remap : {'CDL'}, optional
             Currently only CDL crop type values are supported.
+        crop_type_kc_flag : bool, optional
+            If True, compute Kc using crop type specific coefficients.
+            If False, use generic crop class coefficients. The default is False.
 
         Notes
         -----
         Fc = (NDVI * 1.26) - 0.18
-        Kc = f(Fc) [based on crop type]
+        Kc = f(Fc) [based on crop type or crop class]
         ETcb = Kc * ETo
 
         References

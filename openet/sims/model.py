@@ -109,6 +109,7 @@ def crop_class(crop_type, crop_type_remap, crop_type_band='crop_type'):
 
     """
     if crop_type_remap.upper() == 'CDL':
+        # CGM - This should be read/built from the data in crop_kc.py
         # Group the "from" values in a list for each "to" value
         remap_dict = {
             1: [1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14,
@@ -120,9 +121,13 @@ def crop_class(crop_type, crop_type_remap, crop_type_band='crop_type'):
                 221, 222, 224, 225, 226, 227, 228, 229,
                 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
                 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254],
+            # Vines / Grapes
             2: [69],
+            # Tree crops
             3: [66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
                 201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223],
+            # Rice
+            # 5: [3],
         }
     else:
         raise ValueError('unsupported crop_type_remap: "{}"'.format(
@@ -241,6 +246,8 @@ def kc(img, crop_class):
     # more sophisticated. For now anything with ndvi less than 0.14
     # gets a kc of 1.05
     mask_rice = img.ndvi.lte(0.14).And(img.crop_class.eq(5))
+    # CGM - We aren't building a crop class of 5 yet but you could use the crop_type
+    # mask_rice = img.ndvi.lte(0.14).And(img.crop_type.eq(3))
     kc5 = kc1.where(mask_rice, 1.05)
     # mask_rice = self.ndvi.gt(0.14).And(self.crop_class.eq(5))
     # kc5b = fc_zero.where(mask_rice, img_expr)
