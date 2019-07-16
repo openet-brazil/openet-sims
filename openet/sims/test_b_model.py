@@ -38,10 +38,32 @@ def test_ee_init():
     assert ee.Number(1).getInfo() == 1
 
 
+def test_crop_data_image():
+    output = utils.constant_image_value(model.crop_data_image(
+        param_name='crop_class',
+        crop_type=ee.Image.constant(9).rename(['crop_class']),
+        crop_data={9: {'crop_class': 10}}))
+    assert output['crop_class'] == 10
+
+
+def test_crop_data_image_int_scalar():
+    # Test that floating point values are scaled to int before remapping
+    output = utils.constant_image_value(model.crop_data_image(
+        param_name='m_l', crop_type=ee.Image.constant(9).rename(['m_l']),
+        crop_data={9: {'m_l': 0.01}}))
+    assert output['m_l'] == 0.01
+
+
 def test_Model_init_default_parameters():
     m = default_model_obj()
     assert m.crop_type_source == 'USDA/NASS/CDL/{}'.format(YEAR)
     assert m.crop_type_remap == 'CDL'
+
+
+@pytest.mark.parametrize('parameter', ['m_l', 'h_max'])
+def test_Model_init_crop_data_images(parameter):
+    output = utils.getinfo(getattr(default_model_obj(), parameter))
+    assert output['bands'][0]['id'] == parameter
 
 
 @pytest.mark.parametrize(
@@ -70,8 +92,12 @@ def test_Model_crop_type_source_cdl_image():
 def test_Model_crop_type_source_cdl_image_exception():
     """Requesting a CDL image that doesn't exist should raise an EE exception"""
     with pytest.raises(Exception):
-        utils.getinfo(default_model_obj(
-            crop_type_source='USDA/NASS/CDL/2099').crop_type)
+        utils.getinfo(default_model_obj(crop_type_source='USDA/NASS/CDL/2099'))
+        # CGM - The exception is raised in the _crop_type() method which is
+        #   in the init.  If crop_type is a lazy property then it is necessary
+        #   to request the property in order to raise the exception.
+        # utils.getinfo(default_model_obj(
+        #     crop_type_source='USDA/NASS/CDL/2099').crop_type)
 
 
 def test_Model_crop_type_source_openet_crop_type():
@@ -82,7 +108,8 @@ def test_Model_crop_type_source_openet_crop_type():
 
 def test_Model_crop_type_source_exception():
     with pytest.raises(ValueError):
-        utils.getinfo(default_model_obj(crop_type_source='FOO').crop_type)
+        utils.getinfo(default_model_obj(crop_type_source='FOO'))
+        # utils.getinfo(default_model_obj(crop_type_source='FOO').crop_type)
 
 
 def test_Model_crop_type_constant_value():
@@ -97,7 +124,8 @@ def test_Model_crop_data():
 
 def test_Model_crop_data_remap_exception():
     with pytest.raises(ValueError):
-        utils.getinfo(default_model_obj(crop_type_remap='FOO').crop_data)
+        utils.getinfo(default_model_obj(crop_type_remap='FOO'))
+        # utils.getinfo(default_model_obj(crop_type_remap='FOO').crop_data)
 
 
 @pytest.mark.parametrize(
@@ -183,23 +211,37 @@ def test_Model_fc_min_max(ndvi, fc_min, fc_max, expected, tol=0.0001):
     assert abs(output['fc'] - expected) <= tol
 
 
-def test_Model_kc_row_generic_constant_value(fc=0.8, crop_class=1, tol=0.0001):
+def test_Model_kc_row_crop_constant_value(fc=0.8, tol=0.0001):
     expected = ((fc ** 2) * -0.4771) + (1.4047 * fc) + 0.15
-    output = utils.constant_image_value(default_model_obj(
-        crop_type_source=crop_class).kc_row_crop_generic(fc=ee.Image.constant(fc)))
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=1).kc_row_crop(
+            fc=ee.Image.constant(fc)).rename('kc'))
     assert abs(output['kc'] - expected) <= tol
 
 
-def test_Model_kc_row_generic_masked(crop_type=0):
-    output = utils.constant_image_value(default_model_obj(
-        crop_type_source=crop_type).kc_row_crop_generic(fc=ee.Image.constant(0.7)))
-    assert output['kc'] == None
+# def test_Model_kc_row_generic_masked(crop_type=0):
+#     output = utils.constant_image_value(
+#         default_model_obj(crop_type_source=crop_type).kc_row_crop(
+#             fc=ee.Image.constant(0.7)).rename('kc'))
+#     assert output['kc'] == None
 
 
 @pytest.mark.parametrize(
     'fc, expected',
     [
-        #
+        [0.8, 0.92832],
+    ]
+)
+def test_Model_kc_row_crop_custom_constant_value(fc, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=1).kc_row_crop_custom(
+            fc=ee.Image.constant(fc)).rename('kc'))
+    assert abs(output['kc'] - expected) <= tol
+
+
+@pytest.mark.parametrize(
+    'fc, expected',
+    [
         [0.0, 0.0],
         [0.5, 0.75],
         [0.6, 0.8434],  # 0.6 ** (1/3)
@@ -210,30 +252,56 @@ def test_Model_kc_row_generic_masked(crop_type=0):
     ]
 )
 def test_Model_kc_vine_constant_value(fc, expected, tol=0.0001):
-    output = utils.constant_image_value(default_model_obj(
-        crop_type_source=69).kc_vine_generic(fc=ee.Image.constant(fc)))
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=69).kc_vine(
+            fc=ee.Image.constant(fc)).rename('kc'))
     assert abs(output['kc'] - expected) <= tol
 
 
-def test_Model_kc_vine_masked(crop_type=0):
+# def test_Model_kc_vine_masked(crop_type=0):
+#     output = utils.constant_image_value(
+#         default_model_obj(crop_type_source=crop_type).kc_vine(
+#             fc=ee.Image.constant(0.7)).rename('kc'))
+#     assert output['kc'] == None
+
+
+def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007, tol=0.0001):
     output = utils.constant_image_value(
-        default_model_obj(crop_type_source=crop_type).kc_vine_generic(
-            fc=ee.Image.constant(0.7)))
-    assert output['kc'] == None
+        default_model_obj(crop_type_source=66).kc_tree(
+            fc=ee.Image.constant(fc)).rename('kc'))
+    assert abs(output['kc'] - expected) <= tol
 
 
 @pytest.mark.parametrize(
     'fc, expected',
     [
-        [0.8, 0.8 * 1.48 + 0.007],
+        [0.8, 0.4096],
     ]
 )
-def test_Model_kc_tree_generic_constant_value(fc, expected, tol=0.0001):
-    output = utils.constant_image_value(default_model_obj(
-        crop_type_source=66).kc_tree_generic(fc=ee.Image.constant(fc)))
+def test_Model_kc_tree_custom_constant_value(fc, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=66).kc_tree_custom(
+            fc=ee.Image.constant(fc)).rename('kc'))
     assert abs(output['kc'] - expected) <= tol
 
 
+@pytest.mark.parametrize(
+    'ndvi, fc, expected',
+    [
+        [-0.1, 0.0, 1.05],
+        [0.14, 0.0, 1.05],
+        # An NDVI in the range [0.14, 0.142857] will be clamped to 0 in fc(),
+        # but is above the 0.14 threshold in kc() so it is not set to 1.05.
+        [0.142, 0, 0],
+        [0.143, 1.26 * 0.143 - 0.18, 1.26 * 0.143 - 0.18],
+        [0.8, 1.26 * 0.8 - 0.18, 1.26 * 0.8 - 0.18],
+    ]
+)
+def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=3).kc_rice(
+            fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)).rename('kc'))
+    assert abs(output['kc'] - expected) <= tol
 
 
 # def test_kcb_full():
@@ -244,31 +312,21 @@ def test_Model_kc_tree_generic_constant_value(fc, expected, tol=0.0001):
 #     assert False
 
 
-# @pytest.mark.parametrize(
-#     'fc, crop_type, expected',
-#     [
-#         # 1.26 * 0.8 - 0.18 = 0.828
-#         # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
-#         [0.828, 1, 0.9859994736],
-#         # [0.7, 2, 0.702 * 1.7],
-#         # [0.8, 3, 0.828 * 1.48 + 0.007],
-#         # [0.2, 1, 0.2486651136],
-#         # # Test if low NDVI Kc values are clamped
-#         # # Fc for NDVI of 0.1 should be clamped to 0.0
-#         # [0.1, 1, 0.15],
-#         # [0.1, 2, 0.0],
-#         # [0.1, 3, 0.007],
-#         # # Test if high NDVI Kc values are clamped
-#         # # Kc for class 1 can never get to clamp limit since NDVI <= 1
-#         # [1.0, 1, 1.0776],
-#         # [0.90, 2, 1.25],
-#         # [0.90, 3, 1.25],
-#     ]
-# )
-# def test_Model_class_kc_constant_value(fc, crop_type, expected, tol=0.0001):
-#     m = default_model_obj(crop_type_source=crop_type)
-#     output = utils.constant_image_value(m.kc(fc=ee.Image.constant(fc)))
-#     assert abs(output['kc'] - expected) <= tol
+@pytest.mark.parametrize('crop_type', [1, 69, 66, 3])
+def test_Model_kc_constant_value(crop_type):
+    # Check that a number is returned for all crop classes
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=crop_type).kc(
+            fc=ee.Image.constant(0.8), ndvi=ee.Image.constant(0.5)).rename('kc'))
+    assert output['kc'] is not None
+
+
+def test_Model_kc_crop_class_0():
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=0).kc(
+            fc=ee.Image.constant(0.8), ndvi=ee.Image.constant(0.5)).rename('kc'))
+    assert output['kc'] == 0.0
+
 
 
 # def test_Model_kc_constant_nodata():

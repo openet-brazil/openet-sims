@@ -5,8 +5,6 @@ import ee
 from . import data
 from . import utils
 
-# int_scalar = 100
-
 
 def lazy_property(fn):
     """Decorator that makes a property lazy-evaluated
@@ -47,10 +45,33 @@ class Model():
         self.crop_type_remap = crop_type_remap
         self.crop_type_kc_flag = crop_type_kc_flag
 
+        # CGM - Trying out setting as properties in init
+        #   instead of as lazy properties below
+        self.crop_data = self._crop_data()
+        self.crop_type = self._crop_type()
+        self.crop_class = self._crop_class()
+
+        # Dynamically set the crop data parameter images as class properties
+        # This only works if crop_type and crop_data are set in init
+        for param in ['m_l', 'h_max']:
+            setattr(self, param,
+                    crop_data_image(param, self.crop_type, self.crop_data))
+
+
+    # # CGM - Currently setting these in init so they can be set dynamically
+    # @lazy_property
+    # def h_max(self):
+    #     return crop_data_image('h_max', self.crop_type, self.crop_data)
+    #
+    # @lazy_property
+    # def m_l(self):
+    #     return crop_data_image('m_l', self.crop_type, self.crop_data)
+
+
     # CGM - crop_type, crop_class, and crop_data could be lazy properties?
     #   It might be confusing though to have kc and fc not be.
-    @lazy_property
-    def crop_type(self):
+    # @lazy_property
+    def _crop_type(self):
         """Crop type
 
         Parameters
@@ -131,8 +152,8 @@ class Model():
         # Should the image properties be set onto the image also?
         return crop_type_img.rename(['crop_type']).set(properties)
 
-    @lazy_property
-    def crop_class(self):
+    # @lazy_property
+    def _crop_class(self):
         """Map crop type values to generic crop classes
 
         The current OpenET SIMS model only supports three generic crop classes.
@@ -155,8 +176,8 @@ class Model():
         return self.crop_type.remap(remap_from, remap_to, 0)\
             .rename(['crop_class'])
 
-    @lazy_property
-    def crop_data(self):
+    # @lazy_property
+    def _crop_data(self):
         """Load the crop data dictionary
 
         Currently the data is in data.py but this method could also be used to
@@ -182,15 +203,6 @@ class Model():
             raise ValueError('unsupported crop_type_remap: "{}"'.format(
                 self.crop_type_remap))
 
-    # CGM - Could/should these be set in a loop based on the keys of crop_data?
-    @lazy_property
-    def h_max(self):
-        return data_image('h_max', self.crop_type, self.crop_data)
-
-    @lazy_property
-    def m_l(self):
-        return data_image('m_l', self.crop_type, self.crop_data)
-
     # CGM - This could be lazy if ndvi was inherited from Image
     # @lazy_property
     def fc(self, ndvi, fc_min=0.0, fc_max=1.0):
@@ -199,8 +211,8 @@ class Model():
         Parameters
         ----------
         ndvi : ee.Image
-        fc_min : float
-        fc_max : float
+        fc_min : float, optional
+        fc_max : float, optional
 
         Returns
         -------
@@ -211,139 +223,169 @@ class Model():
             .clamp(fc_min, fc_max)\
             .rename(['fc'])
 
-    # CGM - It doesn't really make sense to have kc by lazy unless fc is also
+    # CGM - It doesn't really make sense to have kc be lazy unless fc is also
     # @lazy_property
-    def kc(self, fc):
+    def kc(self, fc, ndvi):
         """
 
         Parameters
         ----------
         fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index.  Used to compute rice Kc.
 
         Returns
         -------
+        ee.Image
 
         """
+        # Compute generic/general Kc for each crop class and combine
+        # CGM - Not sure which approach is best or most efficient
+        kc = fc.multiply(0)
+        kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
+        kc = kc.where(self.crop_class.eq(2), self.kc_vine(fc))
+        kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
+        kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
 
-        # CGM - Need to test if there is a significant difference between multiple
-        #   where statements or separate images that get combined at the end.
-        # CGM - Are the crop specific and generic operations exclusive of each other?
-        # The generic crop equations could be moved into an "else" if they are
+        # kc0 = fc.multiply(0)
+        # kc1 = kc0.where(self.crop_class.eq(1), self.kc_row_crop(fc))
+        # kc2 = kc0.where(self.crop_class.eq(2), self.kc_vine(fc))
+        # kc3 = kc0.where(self.crop_class.eq(3), self.kc_tree(fc))
+        # kc5 = kc0.where(self.crop_class.eq(5), self.kc_rice(fc))
+        # kc = kc1.add(kc2).add(kc3).add(kc5)
 
+        # CGM - How would I combine these?
+        # kc0 = fc.multiply(0)
+        # kc1 = self.kc_row_crop(fc).updateMask(self.crop_class.eq(1))
+        # kc2 = self.kc_vine(fc).updateMask(self.crop_class.eq(2))
+        # kc3 = self.kc_tree(fc).updateMask(self.crop_class.eq(3))
+        # kc5 = self.kc_rice(fc).updateMask(self.crop_class.eq(4))
+        # kc = ee.Image([kc1, kc2, kc3, kc5]).reduce(ee.Reducer.first())
 
-        # Initialize all unmasked cells to 0 then set Kc values for each crop class
-        fc_zero = fc.multiply(0)
-        # kc = fc.multiply(0)
+        if self.crop_type_kc_flag:
+            # CGM - Is there a better way of masking/selecting the updated pixels?
+            kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
+                          self.kc_row_crop_custom(fc))
+            kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
+                          self.kc_tre_custom(fc))
 
-
-        # Generic crop class Kc models
-        # Row Crops - class 1
-        kc1 = fc_zero.where(self.crop_class.eq(1), self.kc_row_crop_generic(fc))
-
-        # Vines - class 2
-        kc2 = fc_zero.where(self.crop_class.eq(2), self.kc_vine(fc))
-
-        # Trees - class 3
-        kc3 = fc_zero.where(
-            self.crop_class.eq(3),
-            fc.multiply(1.48).add(0.007))
-
-        # Rice - class 5
-        # kc5 = kc.where(
-        #     self.crop_class.eq(5),
-        #     fc.multiply(1.48).add(0.007))
-
-        kc = kc1.add(kc2).add(kc3)
-
-        return kc
-
-
-    #     # Crop specific Kc models
-    #     if self.crop_type_kc_flag:
-    #         # Row crops - class 1
-    #         # h = h_max * min((fc / 0.7), 1)
-    #         kc = kc.where(
-    #             fc.divide(0.7).lte(1).And(self.crop_class.eq(1)),
-    #             fc.multiply(m_l)\
-    #                 .min(fc.pow(fc.divide(0.7).multiply(h_max).pow(-1).add(1)))
-    #                 .min(1))
-    #         kc = kc.where(
-    #             fc.divide(0.7).gt(1).And(self.crop_class.eq(1)),
-    #             fc.multiply(m_l).min(fc.pow(1 / (1 + h_max))).min(1))
-    #
-    #         # Trees - class 3
-    #         kc = kc.where(
-    #             fc.gt(0.5).And(self.crop_class.eq(3)),
-    #             fc.multiply(m_l).min(fc.pow(1 / (1 + h_max))).min(1))
-    #         kc = kc.where(
-    #             fc.lte(0.5).And(self.crop_class.eq(3)),
-    #             fc.multiply(m_l).min(fc.pow(1 / (1 + (h_max - 1)))).min(1))
-    #
     #     # kc = zero.where(
     #     #     self.crop_type.eq(crop_type_num),
     #     #     kd.multiply(kc_help.kcb_full(self.doy, crop_prof).subtract(kc_min))\
     #     #         .add(kc_min)\
     #     #         .clamp(0, 1.1)
     #     # )
-    #
-    #     return kc
 
-    # CGM - Some of these could be @staticmethod, but that might be confusing
-    def kc_row_crop_generic(self, fc):
-        return fc\
-            .expression("((b(0) ** 2) * -0.4771) + (1.4047 * b(0)) + 0.15")\
-            .updateMask(self.crop_class.eq(1))\
-            .rename(['kc'])
-        # CGM - Should other class pixels be masked or set to 0?
-        # return fc.multiply(0).where(
-        #     self.crop_class.eq(1),
-        #     fc.expression("((b(0) ** 2) * -0.4771) + (1.4047 * b(0)) + 0.15"))
+        return kc.clamp(0, 1.1)
 
-    # def kc_row_crop_custom(self, fc):
-    #     kc = kc.where(
-    #         fc.divide(0.7).lte(1).And(self.crop_class.eq(1)),
-    #         fc.multiply(self.m_l)\
-    #             .min(self.fc.pow(self.fc.divide(0.7).multiply(self.h_max).pow(-1).add(1)))
-    #             .min(1))
-    #     kc = kc.where(
-    #         fc.divide(0.7).gt(1).And(self.crop_class.eq(1)),
-    #         fc.multiply(self.m_l).min(fc.pow(1 / (1 + self.h_max))).min(1))
-    #     return kc
+    def kc_row_crop(self, fc):
+        """General row crop coefficient
 
-    def kc_vine_generic(self, fc):
-        # CGM - fc shouldn't be greater than 1 so the .min(1) may be redundant
-        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1)\
-            .updateMask(self.crop_class.eq(2))\
-            .rename(['kc'])
-        # CGM - Should other class pixels be masked or set to 0?
-        # return fc.multiply(0).where(
-        #     self.crop_class.eq(2),
-        #     fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1))
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
 
-    def kc_tree_generic(self, fc):
-        return fc.multiply(1.48).add(0.007)\
-            .updateMask(self.crop_class.eq(3))\
-            .rename(['kc'])
-        # CGM - Should other class pixels be masked or set to 0?
-        # return fc.multiply(0).where(
-        #     self.crop_class.eq(3),
-        #     fc.multiply(1.48).add(0.007))
+        Returns
+        -------
+        ee.Image
 
-    # def kc_tree_custom(self, fc):
-    #     kc = kc.where(
-    #         fc.gt(0.5).And(self.crop_class.eq(3)),
-    #         fc.multiply(self.m_l).min(fc.pow(1 / (1 + self.h_max))).min(1))
-    #     kc = kc.where(
-    #         fc.lte(0.5).And(self.crop_class.eq(3)),
-    #         fc.multiply(self.m_l).min(self.fc.pow(1 / (1 + (self.h_max - 1)))).min(1))
-    #     return kc
+        """
+        return fc.expression("((b(0) ** 2) * -0.4771) + (1.4047 * b(0)) + 0.15")
+
+    def kc_row_crop_custom(self, fc):
+        """Custom row crop coefficient based on CDL crop type
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        # First calculation is the fc.divide(0.7).lte(1) case
+        # CGM - Add an expression example of this calculation
+        kc = fc.multiply(self.m_l)\
+            .min(fc.pow(fc.divide(0.7).multiply(self.h_max).pow(-1).add(1)))\
+            .min(1)
+        kc = kc.where(
+            fc.divide(0.7).gt(1),
+            fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1))).min(1))
+        return kc
+
+    def kc_vine(self, fc):
+        """Vine (grape) crop coefficient
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        # fc is clamped to <= 1 so the final .min(1) may be redundant
+        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1)
+
+    def kc_tree(self, fc):
+        """General tree crop coefficient
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+
+        Returns
+        -------
+
+        """
+        return fc.multiply(1.48).add(0.007)
+
+    def kc_tree_custom(self, fc):
+        """Custom tree crop coefficient based on CDL crop type
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        # CGM - Add an expression example of this calculation
+        kc = fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(1)))\
+            .min(1)
+        kc = kc.where(
+            fc.lte(0.5),
+            fc.multiply(self.m_l).min(fc.pow(self.h_max.pow(-1))).min(1))
+        return kc
 
     def kc_rice(self, fc, ndvi):
-        # TODO: Back compute the fc for an ndvi of 0.14 to avoid needing
-        #   ndvi as an additional input?
-        return fc.updateMask(self.crop_class.eq(5))\
-            .where(self.ndvi.lte(0.14), 1.05)\
-            .rename(['kc'])
+        """Rice crop coefficient
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        # Can't use fc for determining water since it is clamped to >= 0
+        #   for low ndvi values (i.e. ndvi <= 0.142857)
+        return fc.where(ndvi.lte(0.14), 1.05)
 
     # def kcb_full(doy, crop_prof):
     #     """Basal crop coefficient (Kcb) for a given crop on day-of-year.
@@ -361,46 +403,44 @@ class Model():
     #     return ee.Number(fr(doy, crop_prof))\
     #         .multiply(min(1 + 0.1 * crop_prof.h_max, 1.2))
     #
+    # def fr(doy, crop_prof):
+    #     """Reduction factor (f_r) for adjusting Kcb of tree crops
     #
-    # # def fr(doy, crop_prof):
-    # #     """Reduction factor (f_r) for adjusting Kcb of tree crops
-    # #
-    # #     Estimated using a mean leaf stomatal resistance term.
-    # #
-    # #     Parameters
-    # #     ----------
-    # #     doy : int
-    # #     crop_prof : CropProfile
-    # #
-    # #     Returns
-    # #     -------
-    # #     ee.Number
-    # #
-    # #     """
-    # #     doy_gt_ls_stop = ee.Algorithms.If(
-    # #         doy.gt(crop_prof.ls_stop), crop_prof.fr_end, 0)
-    # #
-    # #     doy_geq_ls_start_and_doy_leq_ls_stop = ee.Algorithms.If(
-    # #         doy.gte(crop_prof.ls_start).And(doy.lte(crop_prof.ls_stop)),
-    # #         ee.Number(crop_prof.fr_mid)\
-    # #             .subtract(
-    # #                 (doy.subtract(crop_prof.ls_start))\
-    # #                 .divide(crop_prof.ls_stop - crop_prof.ls_start)\
-    # #                 .multiply(crop_prof.fr_mid - crop_prof.fr_end)
-    # #             ),
-    # #         doy_gt_ls_stop)
-    # #
-    # #     doy_lt_ls_start = ee.Algorithms.If(
-    # #         doy.lt(crop_prof.ls_start), crop_prof.fr_mid,
-    # #         doy_geq_ls_start_and_doy_leq_ls_stop)
-    # #
-    # #     fr = ee.Algorithms.If(crop_prof.crop_class == 1, 1, doy_lt_ls_start)
-    # #
-    # #     return fr
+    #     Estimated using a mean leaf stomatal resistance term.
     #
+    #     Parameters
+    #     ----------
+    #     doy : int
+    #     crop_prof : CropProfile
+    #
+    #     Returns
+    #     -------
+    #     ee.Number
+    #
+    #     """
+    #     doy_gt_ls_stop = ee.Algorithms.If(
+    #         doy.gt(crop_prof.ls_stop), crop_prof.fr_end, 0)
+    #
+    #     doy_geq_ls_start_and_doy_leq_ls_stop = ee.Algorithms.If(
+    #         doy.gte(crop_prof.ls_start).And(doy.lte(crop_prof.ls_stop)),
+    #         ee.Number(crop_prof.fr_mid)\
+    #             .subtract(
+    #                 (doy.subtract(crop_prof.ls_start))\
+    #                 .divide(crop_prof.ls_stop - crop_prof.ls_start)\
+    #                 .multiply(crop_prof.fr_mid - crop_prof.fr_end)
+    #             ),
+    #         doy_gt_ls_stop)
+    #
+    #     doy_lt_ls_start = ee.Algorithms.If(
+    #         doy.lt(crop_prof.ls_start), crop_prof.fr_mid,
+    #         doy_geq_ls_start_and_doy_leq_ls_stop)
+    #
+    #     fr = ee.Algorithms.If(crop_prof.crop_class == 1, 1, doy_lt_ls_start)
+    #
+    #     return fr
 
 
-def data_image(param_name, crop_type, crop_data):
+def crop_data_image(param_name, crop_type, crop_data):
     """Build a constant Image of crop type data for one parameter"""
 
     # Scale floating point values by integer factor, then divide after remap
@@ -414,6 +454,10 @@ def data_image(param_name, crop_type, crop_data):
     return crop_type.remap(remap_from, remap_to) \
         .double().divide(data.int_scalar) \
         .rename([param_name])
+
+
+
+
 
 
 
