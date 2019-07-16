@@ -61,7 +61,7 @@ class Collection():
             #             'etr_band': 'etr'},
             # **kwargs
         ):
-        """Earth Engine based SIMS ETcb Image Collection
+        """Earth Engine based SIMS ETcb Image Collection object
 
         Parameters
         ----------

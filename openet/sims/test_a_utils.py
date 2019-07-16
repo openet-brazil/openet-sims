@@ -9,7 +9,7 @@ from . import utils
 # import openet.sims.utils as utils
 
 
-def test_getinfo():
+def test_ee_init():
     assert utils.getinfo(ee.Number(1)) == 1
 
 

@@ -13,7 +13,8 @@
 
 import ee
 
-from . import model
+from .model import Model
+# from . import model
 from . import utils
 import openet.core.common as common
 # import utils
@@ -46,7 +47,7 @@ class Image():
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             ):
-        """Construct a SIMS model based ET Image
+        """Earth Engine based SIMS image object
 
         Parameters
         ----------
@@ -91,30 +92,31 @@ class Image():
         self.etr_band = etr_band
         self.etr_factor = etr_factor
 
-        self.crop_type_source = crop_type_source
-        self.crop_type_remap = crop_type_remap
-
         # Get system properties from the input image
-        self._id = self.image.get('system:id')
-        self._index = self.image.get('system:index')
-        self._time_start = self.image.get('system:time_start')
+        self.id = self.image.get('system:id')
+        self.index = self.image.get('system:index')
+        self.time_start = self.image.get('system:time_start')
         self._properties = {
-            'system:index': self._index,
-            'system:time_start': self._time_start,
-            'image_id': self._id,
+            'system:index': self.index,
+            'system:time_start': self.time_start,
+            'image_id': self.id,
         }
 
         # Build date properties from the system:time_start
-        self._date = ee.Date(self._time_start)
-        self._year = ee.Number(self._date.get('year'))
-        self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
-        self._end_date = self._start_date.advance(1, 'day')
+        self.date = ee.Date(self.time_start)
+        self.year = ee.Number(self.date.get('year'))
+        self.start_date = ee.Date(utils.date_to_time_0utc(self.date))
+        self.end_date = self.start_date.advance(1, 'day')
+        self.doy = self._date.getRelative('day', 'year').add(1).int()
 
-        # CGM - I would only add this here if you are also going to make it a
-        #   parameter that can be set on the Image class, otherwise it really
-        #   doesn't need to be set here and can be set in model.py instead.
-        # kc_min for all crops
-        # self._kc_min = .15
+        # CGM - Model class could inherit these from Image instead of passing them
+        #   Could pass time_start instead of separate year and doy
+        self.model = Model(
+            year=self.year, doy=self.doy,
+            crop_type_source=crop_type_source,
+            crop_type_remap=crop_type_remap,
+            crop_type_kc_flag=crop_type_kc_flag,
+        )
 
     def calculate(self, variables=['et']):
         """Return a multiband image of calculated variables
@@ -223,14 +225,10 @@ class Image():
         ee.Image
 
         """
-        crop_class_img = model.crop_class(self.crop_type, self.crop_type_remap)
-
         # Map the the crop class values to the NDVI image
         return self.ndvi.multiply(0)\
-            .add(crop_class_img)\
+            .add(self.model.crop_class)\
             .rename('crop_class').set(self._properties)
-        # CGM I'm not sure why this was being mapped to a double
-        #     .double()
 
     @lazy_property
     def crop_type(self):
@@ -244,7 +242,7 @@ class Image():
         # Map the the crop class values to the NDVI image
         # Crop type image ID property is set in model function
         return self.ndvi.multiply(0)\
-            .add(model.crop_type(self.crop_type_source, self._year))\
+            .add(self.model.crop_type)\
             .rename(['crop_type'])
 
     @lazy_property
@@ -256,7 +254,7 @@ class Image():
         ee.Image
 
         """
-        return model.fc(self.ndvi)\
+        return self.model.fc(self.ndvi)\
             .rename(['fc']).set(self._properties).double()
 
     @lazy_property
@@ -268,7 +266,7 @@ class Image():
         ee.Image
 
         """
-        return model.kc(self, self.crop_class)\
+        return self.model.kc(self, self.crop_class)\
             .rename(['kc']).set(self._properties).double()
 
 

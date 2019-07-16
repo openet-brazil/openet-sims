@@ -65,11 +65,6 @@ def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
         crop_type_source=crop_type_source, crop_type_remap=crop_type_remap))
 
 
-def test_ee_init():
-    """Check that Earth Engine was initialized"""
-    assert ee.Number(1).getInfo() == 1
-
-
 def test_Image_init_default_parameters():
     m = model.Image(image=default_image())
     assert m.etr_source == None
