@@ -46,15 +46,15 @@ class Image():
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
+            crop_type_mask_flag=True,
             ):
         """Earth Engine based SIMS image object
 
         Parameters
         ----------
         image : ee.Image
-            Must have bands: 'ndvi'
-            Must have properties: 'system:time_start', 'system:index', and
-                                  'system:id'
+            Required band: ndvi
+            Required properties: system:time_start, system:index, system:id
         etr_source : str, float, optional
             Reference ET source (the default is None).
             Parameter is required if computing 'et'.
@@ -72,6 +72,8 @@ class Image():
         crop_type_kc_flag : bool, optional
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients. The default is False.
+        crop_type_mask_flag : bool, optional
+            If True, mask all pixels that don't mask to a crop_class
 
         Notes
         -----
@@ -107,7 +109,7 @@ class Image():
         self.year = ee.Number(self.date.get('year'))
         self.start_date = ee.Date(utils.date_to_time_0utc(self.date))
         self.end_date = self.start_date.advance(1, 'day')
-        self.doy = self._date.getRelative('day', 'year').add(1).int()
+        self.doy = self.date.getRelative('day', 'year').add(1).int()
 
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
@@ -116,6 +118,7 @@ class Image():
             crop_type_source=crop_type_source,
             crop_type_remap=crop_type_remap,
             crop_type_kc_flag=crop_type_kc_flag,
+            crop_type_mask_flag=crop_type_mask_flag,
         )
 
     def calculate(self, variables=['et']):
@@ -193,7 +196,7 @@ class Image():
             # Assume a string source is an image collection ID (not an image ID)
             etr_img = ee.Image(
                 ee.ImageCollection(self.etr_source)\
-                    .filterDate(self._start_date, self._end_date)\
+                    .filterDate(self.start_date, self.end_date)\
                     .select([self.etr_band])\
                     .first())
         else:
@@ -266,7 +269,7 @@ class Image():
         ee.Image
 
         """
-        return self.model.kc(self, self.crop_class)\
+        return self.model.kc(self.ndvi)\
             .rename(['kc']).set(self._properties).double()
 
 
@@ -311,7 +314,7 @@ class Image():
 
         """
         return self.mask\
-            .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
+            .double().multiply(0).add(utils.date_to_time_0utc(self.date))\
             .rename(['time']).set(self._properties).double()
 
     @classmethod
