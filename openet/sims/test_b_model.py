@@ -270,7 +270,7 @@ def test_Model_kd_vine_constant_value(fc, expected, tol=0.0001):
     output = utils.constant_image_value(
         default_model_obj(crop_type_source=69)._kd_vine(
             fc=ee.Image.constant(fc)))
-    assert abs(output['kc'] - expected) <= tol
+    assert abs(output['kd'] - expected) <= tol
 
 
 @pytest.mark.parametrize(

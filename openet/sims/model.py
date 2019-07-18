@@ -6,19 +6,19 @@ from . import data
 from . import utils
 
 
-def lazy_property(fn):
-    """Decorator that makes a property lazy-evaluated
-
-    https://stevenloria.com/lazy-properties/
-    """
-    attr_name = '_lazy_' + fn.__name__
-
-    @property
-    def _lazy_property(self):
-        if not hasattr(self, attr_name):
-            setattr(self, attr_name, fn(self))
-        return getattr(self, attr_name)
-    return _lazy_property
+# def lazy_property(fn):
+#     """Decorator that makes a property lazy-evaluated
+#
+#     https://stevenloria.com/lazy-properties/
+#     """
+#     attr_name = '_lazy_' + fn.__name__
+#
+#     @property
+#     def _lazy_property(self):
+#         if not hasattr(self, attr_name):
+#             setattr(self, attr_name, fn(self))
+#         return getattr(self, attr_name)
+#     return _lazy_property
 
 
 class Model():
@@ -67,7 +67,7 @@ class Model():
         self.crop_type_kc_flag = crop_type_kc_flag
         self.crop_type_mask_flag = crop_type_mask_flag
 
-        # CGM - Trying out setting as properties in init
+        # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
         self.crop_data = self._crop_data()
         self.crop_type = self._crop_type()
@@ -88,6 +88,8 @@ class Model():
             'ls_start', self.crop_type, self.crop_data, 1)
         self.ls_stop = crop_data_image(
             'ls_stop', self.crop_type, self.crop_data, 365)
+        # setattr('h_max', crop_data_image(
+        #     'h_max', self.crop_type, self.crop_data))
 
     # CGM - It would be nice if kc and fc were lazy properties but then fc and
     #   ndvi would need to part of self (inherited from Image?).
@@ -125,7 +127,8 @@ class Model():
             [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals from Table 2; 5a (Kcb)]
 
         """
-        # CGM - This could be set as a class property here
+        # CGM - This could be set as a class property here so that the other
+        #   methods could use it directly?
         fc = self.fc(ndvi)
 
         # Compute generic/general Kc for each crop class and combine
@@ -274,11 +277,6 @@ class Model():
 
         """
         if self.crop_type_remap.upper() == 'CDL':
-            # Populate all of the crops with default coefficients
-            # Can I modify this in place?
-            # for crop_type, crop_data in data.cdl.items():
-            #     if 'fr_end' not in crop_data.keys():
-            #         data.cdl[crop_type]['fr_end'] = 1.0
             return data.cdl
         else:
             raise ValueError('unsupported crop_type_remap: "{}"'.format(
@@ -416,6 +414,10 @@ class Model():
         -------
         ee.Image
 
+        Notes
+        -----
+        TODO: Add a more readable version of the calculation
+
         References
         ----------
         Allen, R., and L. Pereira (2009).  Estimating crop coefficients from
@@ -425,7 +427,6 @@ class Model():
 
         """
         # First calculation is the fc.divide(0.7).lte(1) case
-        # CGM - Add an expression example of this calculation
         return fc.multiply(self.m_l)\
             .min(fc.pow(fc.divide(0.7).multiply(self.h_max).pow(-1).add(1)))\
             .where(
@@ -455,7 +456,7 @@ class Model():
 
         """
         return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1)\
-            .rename(['kc'])
+            .rename(['kd'])
 
     def _kd_tree(self, fc):
         """Density coefficient for tree crops (class 3)
@@ -496,6 +497,8 @@ def crop_data_image(param_name, crop_type, crop_data, default_value=None):
     crop_data : dict
         Imported from data.py
     default_value : float, optional
+        The default value to replace values that weren't matched in the remap.
+        If default_value is not set or is None, unmatched values are masked.
 
     Returns
     -------
@@ -503,7 +506,8 @@ def crop_data_image(param_name, crop_type, crop_data, default_value=None):
 
     Notes
     -----
-    All values are multiplied by integer factor, then divided after remap.
+    All values are multiplied by an factor (read from the data.py file),
+    then divided after the remap in order to return floating point values.
 
     """
     data_dict = {

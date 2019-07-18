@@ -59,17 +59,6 @@ cdl = {
           'fr_end': 0.71, 'ls_start': 270, 'ls_stop': 365,
           'name': 'Evergreen Forest'},
 
-    # Tree crops without custom coefficients
-    70: {'crop_class': 3, 'name': 'Christmas Trees'},
-    71: {'crop_class': 3, 'name': 'Other Tree Crops'},
-    74: {'crop_class': 3, 'name': 'Pecans'},
-    210: {'crop_class': 3, 'name': 'Prunes'},
-    # CGM - There are no Avocado pixels in the 2015-2018 CDL
-    # 215: {'crop_class': 3, 'name': 'Avocados'},
-    217: {'crop_class': 3, 'name': 'Pomegranates'},
-    218: {'crop_class': 3, 'name': 'Nectarines'},
-    220: {'crop_class': 3, 'name': 'Plums'},
-
     # Field crops
     49:  {'crop_class': 1, 'h_max': 0.4, 'm_l': 2, 'fr_mid': 1,
           'name': 'Onions'},
@@ -236,4 +225,15 @@ cdl = {
     249: {'crop_class': 1, 'name': 'Gourds'},
     250: {'crop_class': 1, 'name': 'Cranberries'},
     254: {'crop_class': 1, 'name': 'Dbl Crop Barley/Soybeans'},
+
+    # Tree crops without custom coefficients
+    70: {'crop_class': 3, 'name': 'Christmas Trees'},
+    71: {'crop_class': 3, 'name': 'Other Tree Crops'},
+    74: {'crop_class': 3, 'name': 'Pecans'},
+    210: {'crop_class': 3, 'name': 'Prunes'},
+    # CGM - There are no Avocado pixels in the 2015-2018 CDL
+    # 215: {'crop_class': 3, 'name': 'Avocados'},
+    217: {'crop_class': 3, 'name': 'Pomegranates'},
+    218: {'crop_class': 3, 'name': 'Nectarines'},
+    220: {'crop_class': 3, 'name': 'Plums'},
 }
