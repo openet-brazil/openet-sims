@@ -12,7 +12,7 @@ The OpenET SIMS project is currently in Beta and the version numbers will be "0.
 Coding Conventions
 ==================
 
-OpenET SIMS was developed for Python 3.6.  The code will likely work on other version of Python 3 but there are no plans to officialy support Python 2.7 at this time.
+OpenET SIMS was developed for Python 3.6.  The code will likely work on other version of Python 3 but there are no plans to officially support Python 2.7 at this time.
 
 All code should follow the `PEP8
 <https://www.python.org/dev/peps/pep-0008/>`__ style guide.
@@ -43,13 +43,13 @@ Install additional Python modules using conda (and pip for modules not currently
 
 .. code-block:: console
 
-    conda install earthengine-api oauth2client pytest
+    conda install earthengine-api pytest
     pip install openet-core openet-sims --no-deps
 
 Updating OpenET Module
 ----------------------
 
-While developing the sims module, pip can be used to quickly update the module in the "openet" environment if needed.
+While developing the "sims" module, pip can be used to quickly update the module in the "openet" environment if needed.
 
 .. code-block:: console
 
