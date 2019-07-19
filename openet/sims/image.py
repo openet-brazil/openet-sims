@@ -95,26 +95,26 @@ class Image():
         self.etr_factor = etr_factor
 
         # Get system properties from the input image
-        self.id = self.image.get('system:id')
-        self.index = self.image.get('system:index')
-        self.time_start = self.image.get('system:time_start')
+        self._id = self.image.get('system:id')
+        self._index = self.image.get('system:index')
+        self._time_start = self.image.get('system:time_start')
         self._properties = {
-            'system:index': self.index,
-            'system:time_start': self.time_start,
-            'image_id': self.id,
+            'system:index': self._index,
+            'system:time_start': self._time_start,
+            'image_id': self._id,
         }
 
         # Build date properties from the system:time_start
-        self.date = ee.Date(self.time_start)
-        self.year = ee.Number(self.date.get('year'))
-        self.start_date = ee.Date(utils.date_to_time_0utc(self.date))
-        self.end_date = self.start_date.advance(1, 'day')
-        self.doy = self.date.getRelative('day', 'year').add(1).int()
+        self._date = ee.Date(self._time_start)
+        self._year = ee.Number(self._date.get('year'))
+        self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
+        self._end_date = self._start_date.advance(1, 'day')
+        self._doy = self._date.getRelative('day', 'year').add(1).int()
 
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
         self.model = Model(
-            year=self.year, doy=self.doy,
+            year=self._year, doy=self._doy,
             crop_type_source=crop_type_source,
             crop_type_remap=crop_type_remap,
             crop_type_kc_flag=crop_type_kc_flag,
@@ -196,7 +196,7 @@ class Image():
             # Assume a string source is an image collection ID (not an image ID)
             etr_img = ee.Image(
                 ee.ImageCollection(self.etr_source)\
-                    .filterDate(self.start_date, self.end_date)\
+                    .filterDate(self._start_date, self._end_date)\
                     .select([self.etr_band])\
                     .first())
         else:
@@ -314,7 +314,7 @@ class Image():
 
         """
         return self.mask\
-            .double().multiply(0).add(utils.date_to_time_0utc(self.date))\
+            .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
             .rename(['time']).set(self._properties).double()
 
     @classmethod
@@ -409,17 +409,18 @@ class Image():
         return cls(input_image, **kwargs)
 
     @staticmethod
-    def _ndvi(sr_image):
-        """Compute NDVI
+    def _ndvi(landsat_image):
+        """Normalized difference vegetation index
 
         Parameters
         ----------
-        sr_image : ee.Image
-            Renamed SR image with bands 'nir' and 'red'.
+        landsat_image : ee.Image
+            "Prepped" Landsat image with standardized band names.
 
         Returns
         -------
         ee.Image
 
         """
-        return sr_image.normalizedDifference(['nir', 'red']).rename(['ndvi'])
+        return landsat_image.normalizedDifference(['nir', 'red'])\
+            .rename(['ndvi'])

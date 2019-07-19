@@ -5,11 +5,8 @@ import pprint
 import ee
 import pytest
 
-# Different imports than NDVI model since tests are in same folder as model
-from . import utils
-from .image import Image
-# import openet.sims as model
-# import openet.sims.utils as utils
+import openet.sims as model
+import openet.sims.utils as utils
 # TODO: import utils from openet.core
 # import openet.core.utils as utils
 
@@ -62,7 +59,7 @@ def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                       etr_band='etr', etr_factor=0.85,
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                       crop_type_kc_flag=False, crop_type_mask_flag=True):
-    return Image(**default_image_args(
+    return model.Image(**default_image_args(
         ndvi=ndvi,
         etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
         crop_type_source=crop_type_source,
@@ -73,7 +70,7 @@ def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
 
 
 def test_Image_init_default_parameters():
-    m = Image(image=default_image())
+    m = model.Image(image=default_image())
     assert m.etr_source == None
     assert m.etr_band == None
     assert m.etr_factor == 1.0
@@ -85,16 +82,16 @@ def test_Image_init_default_parameters():
 
 def test_Image_init_calculated_properties():
     m = default_image_obj()
-    assert utils.getinfo(m.time_start) == SCENE_TIME
-    assert utils.getinfo(m.index) == SCENE_ID
+    assert utils.getinfo(m._time_start) == SCENE_TIME
+    assert utils.getinfo(m._index) == SCENE_ID
 
 
 def test_Image_init_date_properties():
     m = default_image_obj()
-    assert utils.getinfo(m.date)['value'] == SCENE_TIME
-    assert utils.getinfo(m.year) == int(SCENE_DATE.split('-')[0])
-    assert utils.getinfo(m.start_date)['value'] == SCENE_TIME
-    assert utils.getinfo(m.end_date)['value'] == utils.millis(
+    assert utils.getinfo(m._date)['value'] == SCENE_TIME
+    assert utils.getinfo(m._year) == int(SCENE_DATE.split('-')[0])
+    assert utils.getinfo(m._start_date)['value'] == SCENE_TIME
+    assert utils.getinfo(m._end_date)['value'] == utils.millis(
         SCENE_DT + datetime.timedelta(days=1))
 
 
@@ -115,12 +112,12 @@ def test_Image_init_date_properties():
 )
 def test_Image_static_ndvi_calculation(red, nir, expected, tol=0.000001):
     output = utils.constant_image_value(
-        Image._ndvi(input_image(red=red, nir=nir)))
+        model.Image._ndvi(input_image(red=red, nir=nir)))
     assert abs(output['ndvi'] - expected) <= tol
 
 
 def test_Image_static_ndvi_band_name():
-    output = utils.getinfo(Image._ndvi(input_image()))
+    output = utils.getinfo(model.Image._ndvi(input_image()))
     assert output['bands'][0]['id'] == 'ndvi'
 
 
@@ -314,7 +311,7 @@ def test_Image_calculate_variables_all():
 
 def test_Image_from_landsat_c1_sr_default_image():
     """Test that the classmethod is returning a class object"""
-    output = Image.from_landsat_c1_sr(input_image())
+    output = model.Image.from_landsat_c1_sr(input_image())
     assert type(output) == type(default_image_obj())
 
 
@@ -329,14 +326,14 @@ def test_Image_from_landsat_c1_sr_default_image():
 )
 def test_Image_from_landsat_c1_sr_image_id(image_id):
     """Test instantiating the class from a Landsat image ID"""
-    output = utils.getinfo(Image.from_landsat_c1_sr(image_id).ndvi)
+    output = utils.getinfo(model.Image.from_landsat_c1_sr(image_id).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
 def test_Image_from_landsat_c1_sr_image():
     """Test instantiating the class from a Landsat ee.Image"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
-    output = utils.getinfo(Image.from_landsat_c1_sr(
+    output = utils.getinfo(model.Image.from_landsat_c1_sr(
         ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
@@ -344,14 +341,14 @@ def test_Image_from_landsat_c1_sr_image():
 def test_Image_from_landsat_c1_sr_kc():
     """Test if ETf can be built from a Landsat images"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
-    output = utils.getinfo(Image.from_landsat_c1_sr(image_id).kc)
+    output = utils.getinfo(model.Image.from_landsat_c1_sr(image_id).kc)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
 def test_Image_from_landsat_c1_sr_et():
     """Test if ET can be built from a Landsat images"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
-    output = utils.getinfo(Image.from_landsat_c1_sr(
+    output = utils.getinfo(model.Image.from_landsat_c1_sr(
         image_id, etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr').et)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
@@ -359,7 +356,7 @@ def test_Image_from_landsat_c1_sr_et():
 def test_Image_from_landsat_c1_sr_exception():
     """Test that an Exception is raise for an invalid image ID"""
     with pytest.raises(Exception):
-        utils.getinfo(Image.from_landsat_c1_sr(ee.Image('FOO')).ndvi)
+        utils.getinfo(model.Image.from_landsat_c1_sr(ee.Image('FOO')).ndvi)
 
 
 @pytest.mark.parametrize(
@@ -370,13 +367,13 @@ def test_Image_from_landsat_c1_sr_exception():
 )
 def test_Image_from_image_id(image_id):
     """Test instantiating the class using the from_image_id method"""
-    output = utils.getinfo(Image.from_image_id(image_id).ndvi)
+    output = utils.getinfo(model.Image.from_image_id(image_id).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
     assert output['properties']['image_id'] == image_id
 
 
 def test_Image_from_method_kwargs():
     """Test that the init parameters can be passed through the helper methods"""
-    assert Image.from_landsat_c1_sr(
+    assert model.Image.from_landsat_c1_sr(
         'LANDSAT/LC08/C01/T1_SR/LC08_042035_20150713',
         etr_band='FOO').etr_band == 'FOO'

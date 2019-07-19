@@ -1,8 +1,8 @@
 import ee
 import pytest
 
-from . import data
-from . import utils
+import openet.sims.data as data
+import openet.sims.utils as utils
 
 
 def test_int_scalar():
@@ -53,7 +53,7 @@ def test_cdl_class3_parameters(param):
 
 def test_cdl_class5():
     # CGM - Should rice be its own class?
-    assert data.cdl[3]['crop_class'] == 1
+    assert data.cdl[3]['crop_class'] == 5
 
 # CGM - How would I do this?
 # def test_cdl_int_scalar_digits():

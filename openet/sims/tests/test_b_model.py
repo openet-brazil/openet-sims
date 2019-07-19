@@ -2,9 +2,9 @@
 import ee
 import pytest
 
-from . import data
-from . import model
-from . import utils
+import openet.sims.data as data
+import openet.sims.model as model
+import openet.sims.utils as utils
 
 # DATE = '2017-07-16'
 YEAR = 2017
@@ -36,11 +36,6 @@ def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,
         crop_type_mask_flag=crop_type_mask_flag))
-
-
-def test_ee_init():
-    """Check that Earth Engine was initialized"""
-    assert ee.Number(1).getInfo() == 1
 
 
 def test_crop_data_image():

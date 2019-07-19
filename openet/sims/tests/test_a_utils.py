@@ -4,9 +4,7 @@ import pprint
 import ee
 import pytest
 
-# Different imports than NDVI model since tests are in same folder as model
-from . import utils
-# import openet.sims.utils as utils
+import openet.sims.utils as utils
 
 
 def test_ee_init():
