@@ -3,11 +3,8 @@ import pprint
 import ee
 import pytest
 
-# Different imports than NDVI model since tests are in same folder as model
-from . import utils
-from . import collection as model
-# import openet.sims as model
-# import openet.sims.utils as utils
+import openet.sims as model
+import openet.sims.utils as utils
 # TODO: import utils from openet.core
 # import openet.core.utils as utils
 
@@ -42,11 +39,6 @@ def parse_scene_id(output_info):
     output = [x['properties']['system:index'] for x in output_info['features']]
     # Strip merge indices (this works for Landsat and Sentinel image IDs
     return sorted(['_'.join(x.split('_')[-3:]) for x in output])
-
-
-def test_ee_init():
-    """Check that Earth Engine was initialized"""
-    assert ee.Number(1).getInfo() == 1
 
 
 def test_Collection_init_default_parameters():
@@ -149,10 +141,10 @@ def test_Collection_init_invalid_collections_exception():
 #     args['collections'] = ['LANDSAT/LC08/C01/T1_RT_TOA',
 #                            'LANDSAT/LC08/C01/T1_TOA']
 #     with pytest.raises(ValueError):
-#         model.Collection(**args)
+#         Collection(**args)
 #     args['collections'] = ['LANDSAT/LC08/C01/T1_SR', 'LANDSAT/LC08/C01/T1_TOA']
 #     with pytest.raises(ValueError):
-#         model.Collection(**args)
+#         Collection(**args)
 
 
 def test_Collection_init_cloud_cover_exception():
@@ -341,8 +333,7 @@ def test_Collection_interpolate_t_interval_annual():
     args['start_date'] = '2017-01-01'
     args['end_date'] = '2018-01-01'
     # args['variables'] = 'ndvi'
-    output = utils.getinfo(model.Collection(**args)
-        .interpolate(t_interval='annual'))
+    output = utils.getinfo(model.Collection(**args).interpolate(t_interval='annual'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['2017']
     assert VARIABLES == sorted(list(set([
