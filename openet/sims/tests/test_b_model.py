@@ -225,6 +225,76 @@ def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
     assert abs(output['kc'] - expected) <= tol
 
 
+def ndvi_to_kc_point(ndvi, doy, crop_type):
+    crop_profile = data.cdl[crop_type]
+
+    fc = min(max((1.26 * ndvi) - 0.18, 0), 1)
+    print(crop_profile['crop_class'])
+    if crop_profile['crop_class'] == 1:
+        h = crop_profile['h_max'] * min((fc / 0.7), 1)
+        fr = 1.0
+    elif crop_profile['crop_class'] == 3 or crop_profile['crop_class'] == 2:
+        # Set fr based on doy
+        if doy < crop_profile['ls_start']:
+            fr = crop_profile['fr_mid']
+        elif ls_start <= doy and doy <= ls_stop:
+            fr = fr_mid - ((doy - crop_profile['ls_start']) /
+                           (crop_profile['ls_stop']) * (crop_profile['fr_mid'] -
+                                                     crop_profile['fr_endi']))
+        elif doy > crop_profile['ls_stop']:
+            fr = crop_profile['fr_end']
+
+        # Set h based on crop class
+        if crop_profile['crop_class'] == 3:
+            if fc > .5:
+                h = crop_profile['h_max']
+            else:
+                h = crop_profile['h_max'] - 1
+        elif crop_profile['crop_class'] == 2:
+            h = crop_profile['h_max']
+    else:
+        return -1
+
+    kd = min(1, crop_profile['m_l'] * fc, fc ** (1/(1+h)))
+    kcb_full = fr * min(1 + (0.1 * crop_profile['h_max']), 1.2)
+    kc_min = 0.15
+    kcb = kc_min + kd * (kcb_full - kc_min)
+
+    # Crop class ceilings
+    if crop_profile['crop_class'] == 2:
+        kcb = min(kcb, 1.1)
+    elif crop_profile['crop_class'] == 3:
+        kcb = min(kcb, 1.2)
+
+    return kcb
+
+
+@pytest.mark.parametrize(
+    'ndvi, doy, crop_type_num',
+    [
+        # 1.26 * 0.8 - 0.18 = 0.828
+        # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
+        [0.8, 174, 1],
+        #[1.0, 200, 3],
+        #[.5, 200, 3],
+        #[.1, 200, 3],
+        [1.0, 200, 1],
+        [.5, 200, 1],
+        [.1, 200, 1],
+        [1.0, 200, 2],
+        [.5, 200, 2],
+        [.1, 200, 2],
+    ]
+)
+def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
+    ndvi_img = ee.Image.constant(ndvi)
+    mod = default_model_obj(crop_type_kc_flag=True,
+                            crop_type_source=crop_type_num)
+    output = utils.constant_image_value(mod.kc(ndvi_img))
+    expected = ndvi_to_kc_point(ndvi, doy, crop_type_num)
+    assert abs(output['kc'] - expected) <= tol
+
+
 @pytest.mark.parametrize(
     'fc, expected',
     [

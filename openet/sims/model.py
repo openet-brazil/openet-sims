@@ -428,7 +428,7 @@ class Model():
         """
         # First calculation is the fc.divide(0.7).lte(1) case
         return fc.multiply(self.m_l)\
-            .min(fc.pow(fc.divide(0.7).multiply(self.h_max).pow(-1).add(1)))\
+            .min(fc.pow(fc.divide(0.7).multiply(self.h_max).add(1).pow(-1)))\
             .where(
                 fc.divide(0.7).gt(1),
                 fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1))))\
