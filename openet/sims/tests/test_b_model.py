@@ -17,7 +17,7 @@ DOY = 197
 #   but the default in the Model class init is the full collection
 def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
                        crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
-                       crop_type_kc_flag=False, crop_type_mask_flag=True):
+                       crop_type_kc_flag=False, crop_type_mask_flag=False):
     return {
         'year': year, 'doy': doy,
         'crop_type_source': crop_type_source,
@@ -29,7 +29,7 @@ def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
 
 def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
                       crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
-                      crop_type_kc_flag=False, crop_type_mask_flag=True):
+                      crop_type_kc_flag=False, crop_type_mask_flag=False):
     return model.Model(**default_model_args(
         year=year, doy=doy,
         crop_type_source=crop_type_source,
@@ -190,6 +190,25 @@ def test_Model_fc(ndvi, expected, tol=0.0001):
     assert abs(output['fc'] - expected) <= tol
 
 
+@pytest.mark.parametrize(
+    'ndvi, expected',
+    [
+        [-0.2, 0.0],  # -0.05 without >= 0 clamping
+        [-0.1, 0.075],
+        [0.0, 0.2],
+        [0.2, 0.45],
+        [0.5, 0.825],
+        [0.7, 1.075],
+        [0.8, 1.2],
+    ]
+)
+def test_Model_kc_generic_constant_value(ndvi, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(crop_type_source=1).kc_generic(
+            ndvi=ee.Image.constant(ndvi)))
+    assert abs(output['kc'] - expected) <= tol
+
+
 def test_Model_kc_row_crop_constant_value(fc=0.8, tol=0.0001):
     expected = ((fc ** 2) * -0.4771) + (1.4047 * fc) + 0.15
     output = utils.constant_image_value(
@@ -311,7 +330,7 @@ def test_Model_kcb_constant_value(kd, doy, h_max, expected, tol=0.0001):
 
 
 
-@pytest.mark.parametrize('crop_type', [1, 69, 66, 3])
+@pytest.mark.parametrize('crop_type', [0, 1, 69, 66, 3])
 def test_Model_kc_constant_value(crop_type):
     # Check that a number is returned for all crop classes
     output = utils.constant_image_value(
@@ -334,7 +353,7 @@ def test_Model_kc_crop_type_mask_flag_false():
     output = utils.constant_image_value(
         default_model_obj(crop_type_source=0, crop_type_mask_flag=False).kc(
             ndvi=ee.Image.constant(0.5)))
-    assert output['kc'] == 0.0
+    assert output['kc'] == 0.825
 
 
 def test_Model_kc_crop_type_mask_flag_true():

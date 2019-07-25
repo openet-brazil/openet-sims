@@ -32,7 +32,7 @@ class Model():
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
-            crop_type_mask_flag=True,
+            crop_type_mask_flag=False,
             ):
         """Earth Engine based SIMS model object
 
@@ -131,14 +131,18 @@ class Model():
         #   methods could use it directly?
         fc = self.fc(ndvi)
 
-        # Compute generic/general Kc for each crop class and combine
-        kc = fc.multiply(0)
+        # Initialize Kc based on a simple NDVI model
+        kc = self.kc_generic(ndvi)
+        # kc = fc.multiply(0)
+
+        # Apply crop class specific Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
         kc = kc.where(self.crop_class.eq(2),
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
 
+        # Apply crop type specific Kc functions
         if self.crop_type_kc_flag:
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
@@ -281,6 +285,22 @@ class Model():
         else:
             raise ValueError('unsupported crop_type_remap: "{}"'.format(
                 self.crop_type_remap))
+
+    def kc_generic(self, ndvi):
+        """Generic crop coefficient based on linear function of NDVI
+
+        Parameters
+        ----------
+        ndvi : ee.Image
+            Normalized diffference vegetation index.
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        return ndvi.multiply(1.25).add(0.2).max(0) \
+            .rename(['kc'])
 
     def kc_row_crop(self, fc):
         """Generic crop coefficient for annual row crops (class 1)

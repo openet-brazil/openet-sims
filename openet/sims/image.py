@@ -46,7 +46,7 @@ class Image():
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
-            crop_type_mask_flag=True,
+            crop_type_mask_flag=False,
             ):
         """Earth Engine based SIMS image object
 
@@ -71,9 +71,11 @@ class Image():
             Currently only CDL crop type values are supported.
         crop_type_kc_flag : bool, optional
             If True, compute Kc using crop type specific coefficients.
-            If False, use generic crop class coefficients. The default is False.
+            If False, use generic crop class coefficients.
+            The default is False.
         crop_type_mask_flag : bool, optional
-            If True, mask all pixels that don't mask to a crop_class
+            If True, mask all pixels that don't map to a crop_class.
+            The default is False.
 
         Notes
         -----
