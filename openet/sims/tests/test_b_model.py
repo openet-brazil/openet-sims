@@ -17,25 +17,30 @@ DOY = 197
 #   but the default in the Model class init is the full collection
 def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
                        crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
-                       crop_type_kc_flag=False, crop_type_mask_flag=False):
+                       crop_type_kc_flag=False, mask_non_ag_flag=False,
+                       water_kc_flag=True):
     return {
         'year': year, 'doy': doy,
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
-        'crop_type_mask_flag': crop_type_mask_flag
+        'mask_non_ag_flag': mask_non_ag_flag,
+        'water_kc_flag': water_kc_flag,
     }
 
 
 def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
                       crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
-                      crop_type_kc_flag=False, crop_type_mask_flag=False):
+                      crop_type_kc_flag=False, mask_non_ag_flag=False,
+                      water_kc_flag=True):
     return model.Model(**default_model_args(
         year=year, doy=doy,
         crop_type_source=crop_type_source,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,
-        crop_type_mask_flag=crop_type_mask_flag))
+        mask_non_ag_flag=mask_non_ag_flag,
+        water_kc_flag=water_kc_flag,
+    ))
 
 
 def test_crop_data_image():
@@ -349,16 +354,16 @@ def test_Model_kc_crop_type_vine(tol=0.0001):
     assert abs(output['kc'] - expected['kcb']) <= tol
 
 
-def test_Model_kc_crop_type_mask_flag_false():
+def test_Model_kc_mask_non_ag_flag_false():
     output = utils.constant_image_value(
-        default_model_obj(crop_type_source=0, crop_type_mask_flag=False).kc(
+        default_model_obj(crop_type_source=0, mask_non_ag_flag=False).kc(
             ndvi=ee.Image.constant(0.5)))
     assert output['kc'] == 0.825
 
 
-def test_Model_kc_crop_type_mask_flag_true():
+def test_Model_kc_mask_non_ag_flag_true():
     output = utils.constant_image_value(
-        default_model_obj(crop_type_source=0, crop_type_mask_flag=True).kc(
+        default_model_obj(crop_type_source=0, mask_non_ag_flag=True).kc(
             ndvi=ee.Image.constant(0.5)))
     assert output['kc'] == None
 
@@ -410,3 +415,18 @@ def test_Model_kc_crop_class_2_clamping():
 #     #     default_model_obj(crop_type_source=66, crop_type_kc_flag=False).kc(
 #     #         ndvi=ee.Image.constant(0.9)))
 #     # assert output['kc'] == 1.2
+
+
+def test_Model_kc_water_kc_flag_false():
+    # Test if setting the water_kc_flag=False works
+    # Negative NDVI returns 0 Kc because of clamping
+    m = default_model_obj(crop_type_source=0, water_kc_flag=False)
+    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(-0.2)))
+    assert output['kc'] == 0.0
+
+
+def test_Model_kc_water_kc_flag_true():
+    # Test if setting the water_kc_flag=True works
+    m = default_model_obj(crop_type_source=0, water_kc_flag=True)
+    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(-0.2)))
+    assert output['kc'] == 1.05

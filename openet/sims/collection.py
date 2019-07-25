@@ -56,7 +56,7 @@ class Collection():
             etr_band=None,
             etr_factor=1.0,
             filter_args=None,
-            # CGM - Split model_args into "image_args" and "model_args"?
+            # TODO: Split model_args into "image_args" and "model_args"?
             model_args=None,
             # model_args={'etr_source': 'IDAHO_EPSCOR/GRIDMET',
             #             'etr_band': 'etr'},
