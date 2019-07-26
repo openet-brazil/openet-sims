@@ -410,10 +410,10 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
         # Set fr based on doy
         if doy < crop_profile['ls_start']:
             fr = crop_profile['fr_mid']
-        elif ls_start <= doy and doy <= ls_stop:
-            fr = fr_mid - ((doy - crop_profile['ls_start']) /
-                           (crop_profile['ls_stop']) * (crop_profile['fr_mid'] -
-                                                     crop_profile['fr_endi']))
+        elif crop_profile['ls_start'] <= doy and doy <= crop_profile['ls_stop']:
+            fr = crop_profile['fr_mid'] - ((doy - crop_profile['ls_start'])\
+                                           / (crop_profile['ls_stop'] - crop_profile['ls_start'])\
+                                           * (crop_profile['fr_mid'] - crop_profile['fr_end']))
         elif doy > crop_profile['ls_stop']:
             fr = crop_profile['fr_end']
 
@@ -455,14 +455,32 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
         [0.5, 200, 1],
         [0.1, 200, 1],
         [1.0, 200, 2],
-        [0.5, 200, 2],
-        [0.1, 200, 2],
+        [0.5, 250, 2],
+        [0.1, 300, 2],
+        [1.0, 200, 69],
+        [0.5, 200, 69],
+        [0.1, 200, 69],
+        [1.0, 250, 69],
+        [0.5, 250, 69],
+        [0.1, 250, 69],
+        [1.0, 300, 69],
+        [0.5, 300, 69],
+        [0.1, 300, 69],
+        [1.0, 200, 75],
+        [0.5, 200, 75],
+        [0.1, 200, 75],
+        [1.0, 300, 75],
+        [0.5, 300, 75],
+        [0.1, 300, 75],
+        [1.0, 301, 75],
+        [0.5, 301, 75],
+        [0.1, 301, 75],
     ]
 )
 def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
     ndvi_img = ee.Image.constant(ndvi)
     mod = default_model_obj(crop_type_kc_flag=True,
-                            crop_type_source=crop_type_num)
+                            crop_type_source=crop_type_num, doy=doy)
     output = utils.constant_image_value(mod.kc(ndvi_img))
     expected = ndvi_to_kc_point(ndvi, doy, crop_type_num)
     assert abs(output['kc'] - expected) <= tol

@@ -402,6 +402,7 @@ class Model():
         return kd.multiply(kcb_full.subtract(kc_min)).add(kc_min)\
             .rename(['kcb'])
 
+
     def _kd_row_crop(self, fc):
         """Density coefficient for annual row crops (class 1)
 
