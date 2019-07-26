@@ -229,7 +229,7 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
     crop_profile = data.cdl[crop_type]
 
     fc = min(max((1.26 * ndvi) - 0.18, 0), 1)
-    print(crop_profile['crop_class'])
+    # print(crop_profile['crop_class'])
     if crop_profile['crop_class'] == 1:
         h = crop_profile['h_max'] * min((fc / 0.7), 1)
         fr = 1.0
@@ -246,7 +246,7 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
 
         # Set h based on crop class
         if crop_profile['crop_class'] == 3:
-            if fc > .5:
+            if fc > 0.5:
                 h = crop_profile['h_max']
             else:
                 h = crop_profile['h_max'] - 1
@@ -255,7 +255,7 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
     else:
         return -1
 
-    kd = min(1, crop_profile['m_l'] * fc, fc ** (1/(1+h)))
+    kd = min(1, crop_profile['m_l'] * fc, fc ** (1 / (1 + h)))
     kcb_full = fr * min(1 + (0.1 * crop_profile['h_max']), 1.2)
     kc_min = 0.15
     kcb = kc_min + kd * (kcb_full - kc_min)
@@ -276,14 +276,14 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
         # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
         [0.8, 174, 1],
         #[1.0, 200, 3],
-        #[.5, 200, 3],
-        #[.1, 200, 3],
+        #[0.5, 200, 3],
+        #[0.1, 200, 3],
         [1.0, 200, 1],
-        [.5, 200, 1],
-        [.1, 200, 1],
+        [0.5, 200, 1],
+        [0.1, 200, 1],
         [1.0, 200, 2],
-        [.5, 200, 2],
-        [.1, 200, 2],
+        [0.5, 200, 2],
+        [0.1, 200, 2],
     ]
 )
 def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
@@ -300,12 +300,18 @@ def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
     [
         # [-0.1, 0.0],
         [0.0, 0.0],
-        [0.45, 0.2418],
-        [0.6, 0.4454],
-        [0.7, 0.5857],
+        [0.1, 0.1668],
+        [0.2, 0.3591],
+        [0.3, 0.5229],
+        [0.4, 0.6521],
+        [0.45, 0.7051],  # NDVI == 0.5
+        [0.5, 0.7517],
+        [0.6, 0.8284],
+        [0.7, 0.8879],
         [0.8, 0.9283],
+        [0.9, 0.9655],
         [1.0, 1.0],
-        [1.1, 1.0],
+        [1.1, 1.0],  # Check clamping
     ]
 )
 def test_Model_kd_row_crop_constant_value(fc, expected, tol=0.0001):
