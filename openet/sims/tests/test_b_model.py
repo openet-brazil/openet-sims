@@ -230,12 +230,18 @@ def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
     [
         # [-0.1, 0.0],
         [0.0, 0.0],
-        [0.45, 0.2418],
-        [0.6, 0.4454],
-        [0.7, 0.5857],
+        [0.1, 0.1668],
+        [0.2, 0.3591],
+        [0.3, 0.5229],
+        [0.4, 0.6521],
+        [0.45, 0.7051],  # NDVI == 0.5
+        [0.5, 0.7517],
+        [0.6, 0.8284],
+        [0.7, 0.8879],
         [0.8, 0.9283],
+        [0.9, 0.9655],
         [1.0, 1.0],
-        [1.1, 1.0],
+        [1.1, 1.0],  # Check clamping
     ]
 )
 def test_Model_kd_row_crop_constant_value(fc, expected, tol=0.0001):
@@ -310,9 +316,8 @@ def test_Model_kcb_constant_value(kd, doy, h_max, expected, tol=0.0001):
     assert abs(output['kcb'] - expected) <= tol
 
 
-
 @pytest.mark.parametrize('crop_type', [1, 69, 66, 3])
-def test_Model_kc_constant_value(crop_type):
+def test_Model_kc_crop_class_constant_value(crop_type):
     # Check that a number is returned for all crop classes
     output = utils.constant_image_value(
         default_model_obj(crop_type_source=crop_type).kc(
@@ -391,3 +396,91 @@ def test_Model_kc_crop_class_2_clamping():
 #     #     default_model_obj(crop_type_source=66, crop_type_kc_flag=False).kc(
 #     #         ndvi=ee.Image.constant(0.9)))
 #     # assert output['kc'] == 1.2
+
+
+def ndvi_to_kc_point(ndvi, doy, crop_type):
+    crop_profile = data.cdl[crop_type]
+
+    fc = min(max((1.26 * ndvi) - 0.18, 0), 1)
+    # print(crop_profile['crop_class'])
+    if crop_profile['crop_class'] == 1:
+        h = crop_profile['h_max'] * min((fc / 0.7), 1)
+        fr = 1.0
+    elif crop_profile['crop_class'] == 3 or crop_profile['crop_class'] == 2:
+        # Set fr based on doy
+        if doy < crop_profile['ls_start']:
+            fr = crop_profile['fr_mid']
+        elif crop_profile['ls_start'] <= doy and doy <= crop_profile['ls_stop']:
+            fr = crop_profile['fr_mid'] - ((doy - crop_profile['ls_start'])\
+                                           / (crop_profile['ls_stop'] - crop_profile['ls_start'])\
+                                           * (crop_profile['fr_mid'] - crop_profile['fr_end']))
+        elif doy > crop_profile['ls_stop']:
+            fr = crop_profile['fr_end']
+
+        # Set h based on crop class
+        if crop_profile['crop_class'] == 3:
+            if fc > 0.5:
+                h = crop_profile['h_max']
+            else:
+                h = crop_profile['h_max'] - 1
+        elif crop_profile['crop_class'] == 2:
+            h = crop_profile['h_max']
+    else:
+        return -1
+
+    kd = min(1, crop_profile['m_l'] * fc, fc ** (1 / (1 + h)))
+    kcb_full = fr * min(1 + (0.1 * crop_profile['h_max']), 1.2)
+    kc_min = 0.15
+    kcb = kc_min + kd * (kcb_full - kc_min)
+
+    # Crop class ceilings
+    if crop_profile['crop_class'] == 2:
+        kcb = min(kcb, 1.1)
+    elif crop_profile['crop_class'] == 3:
+        kcb = min(kcb, 1.2)
+
+    return kcb
+
+
+@pytest.mark.parametrize(
+    'ndvi, doy, crop_type_num',
+    [
+        # 1.26 * 0.8 - 0.18 = 0.828
+        # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
+        [0.8, 174, 1],
+        #[1.0, 200, 3],
+        #[0.5, 200, 3],
+        #[0.1, 200, 3],
+        [1.0, 200, 1],
+        [0.5, 200, 1],
+        [0.1, 200, 1],
+        [1.0, 200, 2],
+        [0.5, 250, 2],
+        [0.1, 300, 2],
+        [1.0, 200, 69],
+        [0.5, 200, 69],
+        [0.1, 200, 69],
+        [1.0, 250, 69],
+        [0.5, 250, 69],
+        [0.1, 250, 69],
+        [1.0, 300, 69],
+        [0.5, 300, 69],
+        [0.1, 300, 69],
+        [1.0, 200, 75],
+        [0.5, 200, 75],
+        [0.1, 200, 75],
+        [1.0, 300, 75],
+        [0.5, 300, 75],
+        [0.1, 300, 75],
+        [1.0, 301, 75],
+        [0.5, 301, 75],
+        [0.1, 301, 75],
+    ]
+)
+def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
+    ndvi_img = ee.Image.constant(ndvi)
+    mod = default_model_obj(crop_type_kc_flag=True,
+                            crop_type_source=crop_type_num, doy=doy)
+    output = utils.constant_image_value(mod.kc(ndvi_img))
+    expected = ndvi_to_kc_point(ndvi, doy, crop_type_num)
+    assert abs(output['kc'] - expected) <= tol
