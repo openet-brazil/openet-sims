@@ -177,16 +177,15 @@ def test_Model_crop_class_constant_value(crop_type, expected):
 @pytest.mark.parametrize(
     'ndvi, expected',
     [
+        [-0.2, 0.0],  # Clamped
+        [-0.1, 0.0],  # Clamped
+        [0.0, 0.0],
+        [0.1, 0.0],
         [0.2, 0.072],
         [0.5, 0.45],
         [0.7, 0.702],
         [0.8, 0.828],
-        # Check if low NDVI Fc values are clamped
-        [0.1, 0.0],
-        [0.0, 0.0],
-        [-0.1, 0.0],
-        # Check if high NDVI Fc values are clamped
-        [0.95, 1.0],
+        [0.95, 1.0],  # Clamped
     ]
 )
 def test_Model_fc(ndvi, expected, tol=0.0001):
@@ -214,15 +213,22 @@ def test_Model_kc_generic_constant_value(ndvi, expected, tol=0.0001):
     assert abs(output['kc'] - expected) <= tol
 
 
-def test_Model_kc_row_crop_constant_value(fc=0.8, tol=0.0001):
-    expected = ((fc ** 2) * -0.4771) + (1.4047 * fc) + 0.15
+@pytest.mark.parametrize(
+    'fc, expected',
+    [
+        [0.0, 0.15],
+        [0.8, 0.9684],
+    ]
+)
+def test_Model_kc_row_crop_constant_value(fc, expected, tol=0.0001):
     output = utils.constant_image_value(
         default_model_obj(crop_type_source=1).kc_row_crop(
             fc=ee.Image.constant(fc)))
     assert abs(output['kc'] - expected) <= tol
 
 
-def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007, tol=0.0001):
+def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007,
+                                      tol=0.0001):
     output = utils.constant_image_value(
         default_model_obj(crop_type_source=66).kc_tree(
             fc=ee.Image.constant(fc)))
@@ -403,7 +409,7 @@ def test_Model_kc_crop_class_2_clamping():
     output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(0.85)))
     assert output['kc'] == 1.1
 
-#
+
 # def test_Model_kc_crop_class_3_clamping():
 #     m = default_model_obj(crop_type_source=66, crop_type_kc_flag=True)
 #     output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(0.9)))
@@ -417,16 +423,16 @@ def test_Model_kc_crop_class_2_clamping():
 #     # assert output['kc'] == 1.2
 
 
-def test_Model_kc_water_kc_flag_false():
-    # Test if setting the water_kc_flag=False works
-    # Negative NDVI returns 0 Kc because of clamping
-    m = default_model_obj(crop_type_source=0, water_kc_flag=False)
-    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(-0.2)))
-    assert output['kc'] == 0.0
-
-
-def test_Model_kc_water_kc_flag_true():
-    # Test if setting the water_kc_flag=True works
-    m = default_model_obj(crop_type_source=0, water_kc_flag=True)
-    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(-0.2)))
-    assert output['kc'] == 1.05
+@pytest.mark.parametrize(
+    'crop_type, ndvi, water_kc_flag, expected',
+    [
+        [0, -0.2, False, 0.0],
+        [0, -0.2, True, 1.05],
+        [1, -0.2, True, 0.15],  # Only set water Kc on crop_class 0
+    ]
+)
+def test_Model_kc_water_kc_flag(crop_type, ndvi, water_kc_flag, expected):
+    m = default_model_obj(crop_type_source=crop_type,
+                          water_kc_flag=water_kc_flag)
+    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(ndvi)))
+    assert output['kc'] == expected
