@@ -42,7 +42,7 @@ def default_image(ndvi=0.8):
 def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                        etr_band='etr', etr_factor=0.85,
                        crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                       crop_type_kc_flag=False, crop_type_mask_flag=True):
+                       crop_type_kc_flag=False, mask_non_ag_flag=False):
     return {
         'image': default_image(ndvi=ndvi),
         'etr_source': etr_source,
@@ -51,21 +51,21 @@ def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
-        'crop_type_mask_flag': crop_type_mask_flag,
+        'mask_non_ag_flag': mask_non_ag_flag,
     }
 
 
 def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
                       etr_band='etr', etr_factor=0.85,
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                      crop_type_kc_flag=False, crop_type_mask_flag=True):
+                      crop_type_kc_flag=False, mask_non_ag_flag=False):
     return model.Image(**default_image_args(
         ndvi=ndvi,
         etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
         crop_type_source=crop_type_source,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,
-        crop_type_mask_flag=crop_type_mask_flag,
+        mask_non_ag_flag=mask_non_ag_flag,
     ))
 
 
@@ -77,7 +77,7 @@ def test_Image_init_default_parameters():
     # assert m.crop_type_source == 'USDA/NASS/CDL'
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
-    # assert m.crop_type_mask_flag == True
+    # assert m.mask_non_ag_flag == False
 
 
 def test_Image_init_calculated_properties():

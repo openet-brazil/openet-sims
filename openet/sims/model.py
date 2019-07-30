@@ -32,7 +32,8 @@ class Model():
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
-            crop_type_mask_flag=True,
+            mask_non_ag_flag=False,
+            water_kc_flag=True,
             ):
         """Earth Engine based SIMS model object
 
@@ -50,8 +51,11 @@ class Model():
         crop_type_kc_flag : bool, optional
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients. The default is False.
-        crop_type_mask_flag : bool, optional
-            If True, mask all pixels that don't mask to a crop_class
+        mask_non_ag_flag : bool, optional
+            If True, mask all pixels that don't map to a crop_class.
+            The default is False.
+        water_kc_flag : bool, optional
+            If True, set Kc for water pixels to 1.05.  The default is True.
 
         """
 
@@ -65,7 +69,8 @@ class Model():
         self.crop_type_source = crop_type_source
         self.crop_type_remap = crop_type_remap
         self.crop_type_kc_flag = crop_type_kc_flag
-        self.crop_type_mask_flag = crop_type_mask_flag
+        self.mask_non_ag_flag = mask_non_ag_flag
+        self.water_kc_flag = water_kc_flag
 
         # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
@@ -131,14 +136,18 @@ class Model():
         #   methods could use it directly?
         fc = self.fc(ndvi)
 
-        # Compute generic/general Kc for each crop class and combine
-        kc = fc.multiply(0)
+        # Initialize Kc based on a simple NDVI model
+        kc = self.kc_generic(ndvi)
+        # kc = fc.multiply(0)
+
+        # Apply crop class specific Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
         kc = kc.where(self.crop_class.eq(2),
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
 
+        # Apply crop type specific Kc functions
         if self.crop_type_kc_flag:
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
@@ -149,7 +158,13 @@ class Model():
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
-        if self.crop_type_mask_flag:
+        # CGM - Is it okay to apply this after all the other Kc functions?
+        #   Should we only apply this to non-ag crop classes?
+        if self.water_kc_flag:
+            kc = kc.where(ndvi.lt(0).And(self.crop_class.eq(0)), 1.05)
+            # kc = kc.where(ndvi.lt(0), 1.05)
+
+        if self.mask_non_ag_flag:
             kc = kc.updateMask(self.crop_class.gt(0))
 
         return kc.rename(['kc'])
@@ -281,6 +296,22 @@ class Model():
         else:
             raise ValueError('unsupported crop_type_remap: "{}"'.format(
                 self.crop_type_remap))
+
+    def kc_generic(self, ndvi):
+        """Generic crop coefficient based on linear function of NDVI
+
+        Parameters
+        ----------
+        ndvi : ee.Image
+            Normalized diffference vegetation index.
+
+        Returns
+        -------
+        ee.Image
+
+        """
+        return ndvi.multiply(1.25).add(0.2).max(0) \
+            .rename(['kc'])
 
     def kc_row_crop(self, fc):
         """Generic crop coefficient for annual row crops (class 1)
