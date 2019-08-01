@@ -229,37 +229,49 @@ class Model():
               self.crop_type_source.upper() == 'USDA/NASS/CDL'):
             # Use the CDL image closest to the image date
             # Hard coding the CDL year range but it could be computed dynamically
-            cdl_year_min = ee.Number(2008)
-            cdl_year_max = ee.Number(2018)
-            # cdl_year_max = ee.Date(ee.ImageCollection('USDA/NASS/CDL')
+            year_min = ee.Number(2008)
+            year_max = ee.Number(2018)
+            # year_max = ee.Date(ee.ImageCollection('USDA/NASS/CDL')
             #     .limit(1, 'system:index', False).first()
             #     .get('system:time_start')).get('year')
-            # cdl_year_max = ee.Number.parse(ee.ImageCollection('USDA/NASS/CDL')\
+            # year_max = ee.Number.parse(ee.ImageCollection('USDA/NASS/CDL')\
             #     .limit(1, 'system:index', False).first().get('system:index'))
 
-            start_year = self.year.min(cdl_year_max).max(cdl_year_min)
-            start_date = ee.Date.fromYMD(start_year, 1, 1)
-            end_date = ee.Date.fromYMD(start_year.add(1), 1, 1)
+            start_year = ee.Number(self.year).min(year_max).max(year_min)
             cdl_coll = ee.ImageCollection('USDA/NASS/CDL')\
-                .filterDate(start_date, end_date)\
+                .filterDate(ee.Date.fromYMD(start_year, 1, 1),
+                            ee.Date.fromYMD(start_year.add(1), 1, 1))\
                 .select(['cropland'])
             crop_type_img = ee.Image(cdl_coll.first())
-            # pprint.pprint(crop_type_img.getInfo())
             properties = properties.set('id', crop_type_img.get('system:id'))
-            # pprint.pprint(properties.getInfo())
 
         elif (type(self.crop_type_source) is str and
               self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
             crop_type_img = ee.Image(self.crop_type_source)\
                 .select(['cropland'])
-            # pprint.pprint(crop_type_img.getInfo())
             properties = properties.set('id', crop_type_img.get('system:id'))
-            # pprint.pprint(properties.getInfo())
 
         elif (type(self.crop_type_source) is str and
               self.crop_type_source.lower() == 'projects/openet/crop_type'):
-            crop_type_img = ee.ImageCollection(self.crop_type_source).mosaic()
-            # properties = properties.set('id', 'projects/openet/crop_type')
+            # Use the crop_type image closest to the image date
+            # Hard coding the year range but it could be computed dynamically
+            year_min = ee.Number(2016)
+            year_max = ee.Number(2018)
+            start_year = ee.Number(self.year).min(year_max).max(year_min)
+            crop_type_coll = ee.ImageCollection(self.crop_type_source)\
+                .filterDate(ee.Date.fromYMD(start_year, 1, 1),
+                            ee.Date.fromYMD(start_year.add(1), 1, 1))
+            crop_type_img = crop_type_coll.mosaic()
+
+            # # DEADBEEF - Testing adding the CDL to the crop_type image asset
+            # #   Not sure which year we should use though
+            # #   I think adding this to the crop type asset makes way more sense
+            # cdl_img = crop_type_img = ee.Image('USDA/NASS/CDL/2018')\
+            #     .select(['cropland'])
+            # crop_type_img = crop_type_img.unmask()\
+            #     .where(crop_type_img.mask().Not().And(cdl_img.mask()), cdl_img)\
+            #     .updateMask(cdl_img.mask())
+            # # properties = properties.set('id', 'projects/openet/crop_type')
 
         # TODO: Support ee.Image and ee.ImageCollection sources
         # elif isinstance(self.crop_type_source, computedobject.ComputedObject):

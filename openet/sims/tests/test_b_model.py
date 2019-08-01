@@ -34,7 +34,7 @@ def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
                       crop_type_kc_flag=False, mask_non_ag_flag=False,
                       water_kc_flag=True):
     return model.Model(**default_model_args(
-        year=year, doy=doy,
+        year=ee.Number(year), doy=ee.Number(doy),
         crop_type_source=crop_type_source,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,

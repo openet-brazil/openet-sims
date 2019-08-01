@@ -278,7 +278,6 @@ class Image():
         return self.model.kc(self.ndvi)\
             .rename(['kc']).set(self._properties).double()
 
-
     @lazy_property
     def mask(self):
         """Mask of all active pixels based on the final Kc
