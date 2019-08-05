@@ -293,7 +293,8 @@ class Collection():
 
     def interpolate(self, variables=None, t_interval='custom',
                     interp_method='linear', interp_days=32,
-                    etr_source=None, etr_band=None, etr_factor=1.0):
+                    etr_source=None, etr_band=None, etr_factor=1.0,
+                    output_type='int16'):
         """
 
         Parameters
@@ -318,6 +319,8 @@ class Collection():
             set here, in class init, or in model_args (searched in that order).
         etr_factor : float, optional
             Reference ET scaling factor (the default is 1.0).
+        output_type : {'int8', 'int16', 'float', 'double'}, optional
+            Output data type for the ET and ETr bands (the default is 'int16').
 
         Returns
         -------
@@ -671,14 +674,40 @@ class Collection():
             etr_img = daily_coll.filterDate(start_date, end_date)\
                 .select(['etr']).sum().multiply(etr_factor)
 
+            # Round and save ET and ETr as integer values to save space
+            # Assuming "custom" t_interval is being used for monthly time steps
+            # For weekly (and shorter) timesteps an int8 would sufficient
+            # Need to think about what the default output type should be
+            if output_type.lower() in ['int16', 'uint16']:
+                # Ensure that ETr > 0
+                # CGM - Should ETf be computed from original or rounded values?
+                etf_img = et_img.round().divide(etr_img.round().max(1)).float()
+                et_img = et_img.round().uint16()
+                etr_img = etr_img.round().uint16()
+            elif output_type.lower() in ['int8', 'uint8']:
+                etf_img = et_img.round().divide(etr_img.round().max(1)).float()
+                et_img = etr_img.round().uint8()
+                etr_img = etf_img.round().uint8()
+            elif output_type.lower() == 'double':
+                et_img = et_img.double()
+                etr_img = etr_img.double()
+                etf_img = et_img.divide(etr_img).double()
+            elif output_type.lower() == 'float':
+                et_img = et_img.float()
+                etr_img = etr_img.float()
+                etf_img = et_img.divide(etr_img).float()
+            else:
+                et_img = et_img.float()
+                etr_img = etr_img.float()
+                etf_img = et_img.divide(etr_img).float()
+
             image_list = []
             if 'et' in variables:
-                image_list.append(et_img.float())
+                image_list.append(et_img)
             if 'etr' in variables:
-                image_list.append(etr_img.float())
+                image_list.append(etr_img)
             if 'etf' in variables:
-                etf_img = et_img.divide(etr_img).rename('etf').float()
-                image_list.append(etf_img)
+                image_list.append(etf_img.rename('etf'))
             if 'ndvi' in variables:
                 ndvi_img = daily_coll\
                     .filterDate(start_date, end_date)\

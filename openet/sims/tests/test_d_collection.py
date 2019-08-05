@@ -501,3 +501,40 @@ def test_Collection_interpolate_no_variables_exception():
 #         xy=TEST_POINT, scale=30)
 #     pprint.pprint(output)
 #     assert False
+
+
+def test_Collection_interpolate_output_type_default():
+    args = default_coll_args()
+    args['variables'] = sorted(['et', 'etr', 'etf', 'ndvi', 'count'])
+    output = utils.getinfo(model.Collection(**args).interpolate())
+    output = output['features'][0]['bands']
+    bands = {info['id']: i for i, info in enumerate(output)}
+    assert(output[bands['et']]['data_type']['precision'] == 'int')
+    assert(output[bands['etr']]['data_type']['precision'] == 'int')
+    assert(output[bands['etf']]['data_type']['precision'] == 'float')
+    assert(output[bands['ndvi']]['data_type']['precision'] == 'float')
+    assert(output[bands['count']]['data_type']['precision'] == 'int')
+
+
+@pytest.mark.parametrize(
+    'output_type, precision, max_value',
+    [
+        ['int8', 'int', 255],
+        ['int16', 'int', 65535],
+        ['float', 'float', None],
+        ['double', 'double', None],
+    ]
+)
+def test_Collection_interpolate_output_type(output_type, precision, max_value):
+    args = default_coll_args()
+    output = utils.getinfo(model.Collection(**args).interpolate(
+        output_type=output_type))
+    output = output['features'][0]['bands']
+    bands = {info['id']: i for i, info in enumerate(output)}
+
+    assert(output[bands['et']]['data_type']['precision'] == precision)
+    assert(output[bands['etr']]['data_type']['precision'] == precision)
+
+    if max_value is not None:
+        assert(output[bands['et']]['data_type']['max'] == max_value)
+        assert(output[bands['etr']]['data_type']['max'] == max_value)
