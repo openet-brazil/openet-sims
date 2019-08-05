@@ -307,20 +307,27 @@ def test_Collection_interpolate_variables_custom():
 
 
 def test_Collection_interpolate_t_interval_daily():
-    """Test if the daily time interval parameter works"""
-    output = utils.getinfo(model.Collection(**default_coll_args())
-        .interpolate(t_interval='daily'))
+    """Test if the daily time interval parameter works
+
+    A full month raises a memory error so testing a shorter range instead
+    Since end_date is exclusive last image date will be one day earlier
+    """
+    args = default_coll_args()
+    args['start_date'] = '2017-07-01'
+    args['end_date'] = '2017-07-04'
+    output = utils.getinfo(
+        model.Collection(**args).interpolate(t_interval='daily'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output)[0] == '20170701'
-    assert parse_scene_id(output)[-1] == '20170731'
+    assert parse_scene_id(output)[-1] == '20170703'
     assert VARIABLES == sorted(list(set([
         y['id'] for x in output['features'] for y in x['bands']])))
 
 
 def test_Collection_interpolate_t_interval_monthly():
     """Test if the monthly time interval parameter works"""
-    output = utils.getinfo(model.Collection(**default_coll_args())
-        .interpolate(t_interval='monthly'))
+    output = utils.getinfo(
+        model.Collection(**default_coll_args()).interpolate(t_interval='monthly'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['201707']
     assert VARIABLES == sorted(list(set([
@@ -333,7 +340,8 @@ def test_Collection_interpolate_t_interval_annual():
     args['start_date'] = '2017-01-01'
     args['end_date'] = '2018-01-01'
     # args['variables'] = 'ndvi'
-    output = utils.getinfo(model.Collection(**args).interpolate(t_interval='annual'))
+    output = utils.getinfo(
+        model.Collection(**args).interpolate(t_interval='annual'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['2017']
     assert VARIABLES == sorted(list(set([
@@ -342,8 +350,8 @@ def test_Collection_interpolate_t_interval_annual():
 
 def test_Collection_interpolate_t_interval_custom():
     """Test if the custom time interval parameter works"""
-    output = utils.getinfo(model.Collection(**default_coll_args())
-        .interpolate(t_interval='custom'))
+    output = utils.getinfo(
+        model.Collection(**default_coll_args()).interpolate(t_interval='custom'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['20170701']
     assert VARIABLES == sorted(list(set([
@@ -504,13 +512,15 @@ def test_Collection_interpolate_no_variables_exception():
 
 
 def test_Collection_interpolate_output_type_default():
+    """Test if output_type parameter is defaulting to float"""
     args = default_coll_args()
     args['variables'] = sorted(['et', 'etr', 'etf', 'ndvi', 'count'])
     output = utils.getinfo(model.Collection(**args).interpolate())
+    pprint.pprint(output)
     output = output['features'][0]['bands']
     bands = {info['id']: i for i, info in enumerate(output)}
-    assert(output[bands['et']]['data_type']['precision'] == 'int')
-    assert(output[bands['etr']]['data_type']['precision'] == 'int')
+    assert(output[bands['et']]['data_type']['precision'] == 'float')
+    assert(output[bands['etr']]['data_type']['precision'] == 'float')
     assert(output[bands['etf']]['data_type']['precision'] == 'float')
     assert(output[bands['ndvi']]['data_type']['precision'] == 'float')
     assert(output[bands['count']]['data_type']['precision'] == 'int')
@@ -525,7 +535,9 @@ def test_Collection_interpolate_output_type_default():
         ['double', 'double', None],
     ]
 )
-def test_Collection_interpolate_output_type(output_type, precision, max_value):
+def test_Collection_interpolate_output_type_parameter(output_type, precision,
+                                                      max_value):
+    """Test if changing the output_type parameter works"""
     args = default_coll_args()
     output = utils.getinfo(model.Collection(**args).interpolate(
         output_type=output_type))
