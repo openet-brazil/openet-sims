@@ -171,8 +171,8 @@ def test_Collection_build_default():
 
 
 def test_Collection_build_variables():
-    output = utils.getinfo(
-        model.Collection(**default_coll_args())._build(variables=['ndvi']))
+    output = utils.getinfo(model.Collection(**default_coll_args())._build(
+        variables=['ndvi']))
     assert ['ndvi'] == sorted(list(set([
         y['id'] for x in output['features'] for y in x['bands']])))
 
@@ -275,8 +275,8 @@ def test_Collection_overpass_class_variables():
 
 def test_Collection_overpass_method_variables():
     """Test that custom method variables are passed through to build function"""
-    output = utils.getinfo(model.Collection(**default_coll_args())
-        .overpass(variables=['et']))
+    output = utils.getinfo(model.Collection(**default_coll_args()).overpass(
+        variables=['et']))
     assert ['et'] == sorted(list(set([
         y['id'] for x in output['features'] for y in x['bands']])))
 
@@ -291,8 +291,7 @@ def test_Collection_overpass_no_variables_exception():
 
 def test_Collection_interpolate_default():
     """Default t_interval should be custom"""
-    output = utils.getinfo(model.Collection(**default_coll_args())
-        .interpolate())
+    output = utils.getinfo(model.Collection(**default_coll_args()).interpolate())
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['20170701']
     assert VARIABLES == sorted(list(set([
@@ -315,8 +314,8 @@ def test_Collection_interpolate_t_interval_daily():
     args = default_coll_args()
     args['start_date'] = '2017-07-01'
     args['end_date'] = '2017-07-04'
-    output = utils.getinfo(
-        model.Collection(**args).interpolate(t_interval='daily'))
+    output = utils.getinfo(model.Collection(**args).interpolate(
+        t_interval='daily'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output)[0] == '20170701'
     assert parse_scene_id(output)[-1] == '20170703'
@@ -326,8 +325,8 @@ def test_Collection_interpolate_t_interval_daily():
 
 def test_Collection_interpolate_t_interval_monthly():
     """Test if the monthly time interval parameter works"""
-    output = utils.getinfo(
-        model.Collection(**default_coll_args()).interpolate(t_interval='monthly'))
+    output = utils.getinfo(model.Collection(**default_coll_args()).interpolate(
+        t_interval='monthly'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['201707']
     assert VARIABLES == sorted(list(set([
@@ -340,8 +339,8 @@ def test_Collection_interpolate_t_interval_annual():
     args['start_date'] = '2017-01-01'
     args['end_date'] = '2018-01-01'
     # args['variables'] = 'ndvi'
-    output = utils.getinfo(
-        model.Collection(**args).interpolate(t_interval='annual'))
+    output = utils.getinfo(model.Collection(**args).interpolate(
+        t_interval='annual'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['2017']
     assert VARIABLES == sorted(list(set([
@@ -350,8 +349,8 @@ def test_Collection_interpolate_t_interval_annual():
 
 def test_Collection_interpolate_t_interval_custom():
     """Test if the custom time interval parameter works"""
-    output = utils.getinfo(
-        model.Collection(**default_coll_args()).interpolate(t_interval='custom'))
+    output = utils.getinfo(model.Collection(**default_coll_args()).interpolate(
+        t_interval='custom'))
     assert output['type'] == 'ImageCollection'
     assert parse_scene_id(output) == ['20170701']
     assert VARIABLES == sorted(list(set([
@@ -516,7 +515,6 @@ def test_Collection_interpolate_output_type_default():
     args = default_coll_args()
     args['variables'] = sorted(['et', 'etr', 'etf', 'ndvi', 'count'])
     output = utils.getinfo(model.Collection(**args).interpolate())
-    pprint.pprint(output)
     output = output['features'][0]['bands']
     bands = {info['id']: i for i, info in enumerate(output)}
     assert(output[bands['et']]['data_type']['precision'] == 'float')
