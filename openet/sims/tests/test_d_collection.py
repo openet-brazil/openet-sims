@@ -556,3 +556,12 @@ def test_Collection_interpolate_output_type_exception():
     with pytest.raises(ValueError):
         utils.getinfo(model.Collection(**default_coll_args())\
             .interpolate(output_type='DEADBEEF'))
+
+
+def test_Collection_interpolate_custom_model_args():
+    """Test passing in a model specific parameter through model_args"""
+    args = default_coll_args()
+    args['model_args'] = {'crop_type_source': 'projects/openet/crop_type'}
+    output = utils.getinfo(model.Collection(**args).interpolate())
+    output = output['features'][0]['properties']
+    assert output['crop_type_source'] == 'projects/openet/crop_type'

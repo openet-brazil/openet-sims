@@ -1,3 +1,4 @@
+import pprint
 
 import ee
 import pytest
@@ -94,6 +95,8 @@ def test_Model_init_crop_data_images(parameter):
     [
         [2007, 2008],
         [2008, 2008],
+        [2016, 2016],
+        [2017, 2017],
         [2019, 2018],
     ]
 )
@@ -126,7 +129,7 @@ def test_Model_crop_type_source_cdl_image_exception():
 def test_Model_crop_type_source_openet_crop_type():
     output = utils.getinfo(default_model_obj(
         crop_type_source='projects/openet/crop_type').crop_type)
-    assert output['bands'][0]['id'] == 'crop_type'
+    assert output['properties'][0]['id'] == 'projects/openet/crop_type'
 
 
 def test_Model_crop_type_source_exception():

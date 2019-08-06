@@ -157,10 +157,18 @@ def test_Image_crop_type_properties():
     'crop_type_source, xy, expected',
     [
         # Test spots around the Five Points CIMIS station
-        ['USDA/NASS/CDL/2016', [-120.113, 36.336], 36],
+        ['USDA/NASS/CDL/2016', [-120.1130, 36.3360], 36],
         ['USDA/NASS/CDL/2016', [-120.1073, 36.3309], 69],
-        ['USDA/NASS/CDL/2016', [-120.108, 36.3459], 204],
-        ['projects/openet/crop_type', [-120.108, 36.3459], 204],
+        ['USDA/NASS/CDL/2016', [-120.1080, 36.3459], 204],
+        # Test a spot that has different CDL values through time
+        ['USDA/NASS/CDL/2016', [-120.5953, 36.8721], 209],
+        ['USDA/NASS/CDL/2017', [-120.5953, 36.8721], 24],
+        ['USDA/NASS/CDL/2018', [-120.5953, 36.8721], 213],
+        # Default image year is 2017 so value should match 2017 CDL
+        ['USDA/NASS/CDL', [-120.5953, 36.8721], 24],
+        # Test a spot that has different crop_type values through time
+        # Value should match for 2017
+        ['projects/openet/crop_type', [-120.125, 36.3893], 54],
     ]
 )
 def test_Image_crop_type_point_value(crop_type_source, xy, expected):
