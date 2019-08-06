@@ -527,8 +527,10 @@ def test_Collection_interpolate_output_type_default():
 @pytest.mark.parametrize(
     'output_type, precision, max_value',
     [
-        ['int8', 'int', 255],
-        ['int16', 'int', 65535],
+        ['int8', 'int', 127],
+        ['uint8', 'int', 255],
+        ['int16', 'int', 32767],
+        ['uint16', 'int', 65535],
         ['float', 'float', None],
         ['double', 'double', None],
     ]
@@ -536,8 +538,7 @@ def test_Collection_interpolate_output_type_default():
 def test_Collection_interpolate_output_type_parameter(output_type, precision,
                                                       max_value):
     """Test if changing the output_type parameter works"""
-    args = default_coll_args()
-    output = utils.getinfo(model.Collection(**args).interpolate(
+    output = utils.getinfo(model.Collection(**default_coll_args()).interpolate(
         output_type=output_type))
     output = output['features'][0]['bands']
     bands = {info['id']: i for i, info in enumerate(output)}
@@ -548,3 +549,10 @@ def test_Collection_interpolate_output_type_parameter(output_type, precision,
     if max_value is not None:
         assert(output[bands['et']]['data_type']['max'] == max_value)
         assert(output[bands['etr']]['data_type']['max'] == max_value)
+
+
+def test_Collection_interpolate_output_type_exception():
+    """Test if Exception is raised for an invalid interp_method parameter"""
+    with pytest.raises(ValueError):
+        utils.getinfo(model.Collection(**default_coll_args())\
+            .interpolate(output_type='DEADBEEF'))

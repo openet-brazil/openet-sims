@@ -130,7 +130,7 @@ class Collection():
 
         # Model specific variables that can be interpolated to a daily timestep
         # Should this be specified in the interpolation method instead?
-        # self._interp_vars = ['ndvi', 'kc']
+        # self._interp_vars = ['ndvi', 'etf']
 
         self._landsat_c1_sr_collections = [
             'LANDSAT/LC08/C01/T1_SR',
@@ -330,14 +330,14 @@ class Collection():
 
         Raises
         ------
-        ValueError for unsupported t_interval, interp_days, and output_type
+        ValueError for unsupported input parameters
         ValueError for negative interp_days values
         TypeError for non-integer interp_days
 
         Notes
         -----
         Not all variables can be interpolated to new time steps.
-        Variables like ETr are simply summed whereas ETf (Kc) is computed from
+        Variables like ETr are simply summed whereas ETf is computed from
         the interpolated/aggregated values.
 
         """
@@ -455,17 +455,16 @@ class Collection():
 
         # Determine which scene variables need to be "built"
         scene_vars = variables[:]
-        # ETf is not currently a method of the Image class
         # The ETf will be computed from the ET and ETr
         if 'etf' in variables:
             scene_vars.remove('etf')
-        # To return ET, the Kc must be interpolated
-        if 'et' in variables and 'kc' not in scene_vars:
-            scene_vars.append('kc')
+        # To return ET, the ETf must be interpolated
+        if 'et' in variables and 'etf' not in scene_vars:
+            scene_vars.append('etf')
         # With the current interp.daily() function,
         #   something has to be interpolated in order to return etr
-        if 'etr' in variables and 'kc' not in scene_vars:
-           scene_vars.append('kc')
+        if 'etr' in variables and 'etf' not in scene_vars:
+           scene_vars.append('etf')
         # The time band is always needed for interpolation
         scene_vars.append('time')
 
@@ -493,7 +492,7 @@ class Collection():
             scene_vars.remove('mask')
 
         # Interpolate to a daily time step
-        # NOTE: the daily function is not computing ET (Kc x ETr)
+        # NOTE: the daily function is not computing ET (ETf x ETr)
         #   but is returning the target (ETr) band
         daily_coll = interp.daily(
             target_coll=daily_et_reference_coll,
@@ -518,14 +517,14 @@ class Collection():
         #     interp_vars.remove('mask')
         #
         # # Interpolate to a daily time step
-        # # NOTE: the daily function is not computing ET (Kc x ETr) but is
+        # # NOTE: the daily function is not computing ET (ETf x ETr) but is
         # #   returning the target (ETr) band
         # daily_coll = interp.daily(
         #     target_coll=daily_et_reference_coll,
         #     source_coll=aggregate_coll.select(interp_vars),
         #     interp_method=interp_method,  interp_days=interp_days)
 
-        # Compute ET from Kc and ETr (if necessary)
+        # Compute ET from ETf and ETr (if necessary)
         if 'et' in variables:
             def compute_et(img):
                 """This function assumes ETr and ETf are present"""
@@ -535,9 +534,9 @@ class Collection():
                 # etr_coll = daily_et_reference_coll\
                 #     .filterDate(img_dt, img_dt.advance(1, 'day'))
                 # Set ETr to Landsat resolution/projection?
-                # etr_img = img.select(['kc']).multiply(0)\
+                # etr_img = img.select(['etf']).multiply(0)\
                 #     .add(ee.Image(etr_coll.first())).rename('etr')
-                # et_img = img.select(['kc']).multiply(etr_img).rename('et')
+                # et_img = img.select(['etf']).multiply(etr_img).rename('et')
                 # return img.addBands(et_img)
             daily_coll = daily_coll.map(compute_et)
 
