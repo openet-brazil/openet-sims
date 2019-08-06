@@ -319,8 +319,10 @@ class Collection():
             set here, in class init, or in model_args (searched in that order).
         etr_factor : float, optional
             Reference ET scaling factor (the default is 1.0).
-        output_type : {'int8', 'int16', 'float', 'double'}, optional
+        output_type : {'int8', 'uint8', 'int16', 'float', 'double'}, optional
             Output data type for the ET and ETr bands (the default is 'float').
+            NDVI and ETf bands will always be written as float type.
+            Count band will always be written as uint8 type.
 
         Returns
         -------
@@ -328,13 +330,15 @@ class Collection():
 
         Raises
         ------
-        ValueError
+        ValueError for unsupported t_interval, interp_days, and output_type
+        ValueError for negative interp_days values
+        TypeError for non-integer interp_days
 
         Notes
         -----
         Not all variables can be interpolated to new time steps.
-        Variables like ETr are simply summed whereas Kc is computed from the
-        interpolated/aggregated values.
+        Variables like ETr are simply summed whereas ETf (Kc) is computed from
+        the interpolated/aggregated values.
 
         """
         # Check that the input parameters are valid
@@ -357,6 +361,10 @@ class Collection():
                 variables = self.variables
             else:
                 raise ValueError('variables parameter must be set')
+
+        output_types = ['int8', 'uint8', 'int16', 'uint16', 'float', 'double']
+        if output_type.lower() not in output_types:
+            raise ValueError('unsupported output_type: {}'.format(output_type))
 
         # Adjust start/end dates based on t_interval
         # Increase the date range to fully include the time interval
@@ -475,7 +483,8 @@ class Collection():
         if 'count' in variables:
             aggregate_coll = interp.aggregate_daily(
                 image_coll=scene_coll.select(['mask']),
-                start_date=start_date, end_date=end_date)
+                start_date=start_date, end_date=end_date,
+            )
 
         # Including count/mask causes problems in interp.daily() function.
         # Issues with mask being an int but the values need to be double.
@@ -489,7 +498,8 @@ class Collection():
         daily_coll = interp.daily(
             target_coll=daily_et_reference_coll,
             source_coll=scene_coll.select(scene_vars),
-            interp_method=interp_method, interp_days=interp_days)
+            interp_method=interp_method, interp_days=interp_days,
+        )
 
         # DEADBEEF - Originally all variables were being aggregated
         # It may be sufficient to only aggregate the mask/count variable,
@@ -518,9 +528,9 @@ class Collection():
         # Compute ET from Kc and ETr (if necessary)
         if 'et' in variables:
             def compute_et(img):
-                """This function assumes ETr and Kc are present"""
-                return img.addBands(img.select(['kc']).multiply(
-                    img.select(['etr'])).rename('et'))
+                """This function assumes ETr and ETf are present"""
+                et_img = img.select(['etf']).multiply(img.select(['etr']))
+                return img.addBands(et_img.rename('et'))
                 # img_dt = ee.Date(img.get('system:time_start'))
                 # etr_coll = daily_et_reference_coll\
                 #     .filterDate(img_dt, img_dt.advance(1, 'day'))
@@ -543,14 +553,28 @@ class Collection():
         }
         interp_properties.update(self.model_args)
 
-
         def aggregate_image(agg_start_date, agg_end_date, date_format):
-            """Aggregate the daily images to the target time step
+            """Aggregate the daily images within the target date range
 
+            Parameters
+            ----------
+            agg_start_date: str
+                Start date (inclusive).
+            agg_end_date : str
+                End date (exclusive).
+            date_format : str
+                Date format for system:index (uses EE JODA format).
+
+            Returns
+            -------
+            ee.Image
+
+            Notes
+            -----
             Since this function takes multiple inputs it is being called
-            for each time interval by separate mappable functions.
-            """
+            for each time interval by separate mappable functions
 
+            """
             # if 'et' in variables or 'etf' in variables:
             et_img = daily_coll.filterDate(agg_start_date, agg_end_date)\
                 .select(['et']).sum().multiply(etr_factor)
@@ -559,29 +583,34 @@ class Collection():
                 .select(['etr']).sum().multiply(etr_factor)
 
             # Round and save ET and ETr as integer values to save space
-            if output_type.lower() in ['int16', 'uint16']:
-                # Ensure that ETr > 0 after rounding
-                # CGM - Should ETf be computed from original or rounded values?
+            # Ensure that ETr > 0 after rounding to avoid divide by zero
+            # Compute ETf from the rounded values
+            if output_type.lower() == 'int16':
+                etf_img = et_img.round().divide(etr_img.round().max(1)).float()
+                et_img = et_img.round().int16()
+                etr_img = etr_img.round().int16()
+            elif output_type.lower() == 'uint16':
                 etf_img = et_img.round().divide(etr_img.round().max(1)).float()
                 et_img = et_img.round().uint16()
                 etr_img = etr_img.round().uint16()
-            elif output_type.lower() in ['int8', 'uint8']:
+            elif output_type.lower() == 'int8':
+                etf_img = et_img.round().divide(etr_img.round().max(1)).float()
+                et_img = et_img.round().int8()
+                etr_img = etr_img.round().int8()
+            elif output_type.lower() == 'uint8':
                 etf_img = et_img.round().divide(etr_img.round().max(1)).float()
                 et_img = et_img.round().uint8()
                 etr_img = etr_img.round().uint8()
-            elif output_type.lower() == 'double':
-                etf_img = et_img.divide(etr_img).double()
-                et_img = et_img.double()
-                etr_img = etr_img.double()
             elif output_type.lower() == 'float':
                 etf_img = et_img.divide(etr_img).float()
                 et_img = et_img.float()
                 etr_img = etr_img.float()
-            else:
-                # Default to float if not set?
-                etf_img = et_img.divide(etr_img).float()
-                et_img = et_img.float()
-                etr_img = etr_img.float()
+            elif output_type.lower() == 'double':
+                # Casting to double may be redundant since these values should
+                #   all be doubles be default
+                etf_img = et_img.divide(etr_img).double()
+                et_img = et_img.double()
+                etr_img = etr_img.double()
 
             image_list = []
             if 'et' in variables:
@@ -641,7 +670,6 @@ class Collection():
             return ee.ImageCollection(month_list.map(aggregate_monthly))
 
         elif t_interval.lower() == 'annual':
-            # CGM - All of this code is almost identical to the monthly function above
             def year_gen(iter_start_dt, iter_end_dt):
                 iter_dt = iter_start_dt
                 while iter_dt < iter_end_dt:
