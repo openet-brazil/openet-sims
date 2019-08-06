@@ -337,8 +337,8 @@ class Collection():
         Notes
         -----
         Not all variables can be interpolated to new time steps.
-        Variables like ETr are simply summed whereas ETf is computed from
-        the interpolated/aggregated values.
+        Variables like ETr are simply summed whereas ETf is computed from the
+        interpolated/aggregated values.
 
         """
         # Check that the input parameters are valid
