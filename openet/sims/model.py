@@ -262,6 +262,7 @@ class Model():
                 .filterDate(ee.Date.fromYMD(start_year, 1, 1),
                             ee.Date.fromYMD(start_year.add(1), 1, 1))
             crop_type_img = crop_type_coll.mosaic()
+            properties = properties.set('id', crop_type_coll.get('system:id'))
 
             # # DEADBEEF - Testing adding the CDL to the crop_type image asset
             # #   Not sure which year we should use though
