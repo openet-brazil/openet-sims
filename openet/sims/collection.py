@@ -194,8 +194,6 @@ class Collection():
         # if self.end_date <= '2015-01-01':
         #     self.collections = [c for c in self.collections if 'COPERNICUS' not in c]
 
-        self.model_name = 'SIMS'
-
     def _build(self, variables=None, start_date=None, end_date=None):
         """Build a merged model variable image collection
 
@@ -257,7 +255,9 @@ class Collection():
                         sr_image=ee.Image(image), **self.model_args)
                     return model_obj.calculate(variables)
 
-                variable_coll = variable_coll.merge(input_coll.map(compute_lsr))
+                variable_coll = variable_coll.merge(
+                    ee.ImageCollection(input_coll.map(compute_lsr)))
+
             else:
                 raise ValueError('unsupported collection: {}'.format(coll_id))
 
@@ -517,8 +517,8 @@ class Collection():
         #     interp_vars.remove('mask')
         #
         # # Interpolate to a daily time step
-        # # NOTE: the daily function is not computing ET (ETf x ETr) but is
-        # #   returning the target (ETr) band
+        # # NOTE: the daily function is not computing ET (ETf x ETr)
+        # #   but is returning the target (ETr) band
         # daily_coll = interp.daily(
         #     target_coll=daily_et_reference_coll,
         #     source_coll=aggregate_coll.select(interp_vars),
@@ -547,7 +547,7 @@ class Collection():
             'collections': ', '.join(self.collections),
             'interp_days': interp_days,
             'interp_method': interp_method,
-            'model_name': self.model_name,
+            'model_name': openet.sims.MODEL_NAME,
             'model_version': openet.sims.__version__,
         }
         interp_properties.update(self.model_args)

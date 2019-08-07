@@ -129,7 +129,7 @@ def test_Model_crop_type_source_cdl_image_exception():
 def test_Model_crop_type_source_openet_crop_type():
     output = utils.getinfo(default_model_obj(
         crop_type_source='projects/openet/crop_type').crop_type)
-    assert output['properties'][0]['id'] == 'projects/openet/crop_type'
+    assert output['properties']['id'] == 'projects/openet/crop_type'
 
 
 def test_Model_crop_type_source_exception():

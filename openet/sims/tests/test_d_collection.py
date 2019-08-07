@@ -75,8 +75,7 @@ def test_Collection_init_default_parameters():
     assert m.cloud_cover_max == 70
     assert m.model_args == {}
     assert m.filter_args == {}
-    # assert m._interp_vars == ['ndvi', 'kc']
-    assert m.model_name == 'SIMS'
+    # assert m._interp_vars == ['ndvi', 'etf']
 
 
 def test_Collection_init_collection_str(coll_id='LANDSAT/LC08/C01/T1_SR'):
@@ -168,9 +167,9 @@ def test_Collection_build_variables():
 
 
 def test_Collection_build_dates():
-    args = default_coll_args()
-    args['start_date'] = '2017-07-24'
-    output = utils.getinfo(sims.Collection(**args)._build(
+    """Check that dates passed to build function override Class dates"""
+    coll_obj = default_coll_obj(start_date='2017-08-01', end_date='2017-09-01')
+    output = utils.getinfo(coll_obj._build(
         start_date='2017-07-16', end_date='2017-07-17'))
     assert parse_scene_id(output) == ['LC08_044033_20170716']
 
@@ -288,7 +287,6 @@ def test_Collection_interpolate_variables_custom():
 def test_Collection_interpolate_t_interval_daily():
     """Test if the daily time interval parameter works
 
-    A full month raises a memory error so testing a shorter range instead
     Since end_date is exclusive last image date will be one day earlier
     """
     coll_obj = default_coll_obj(start_date='2017-07-01', end_date='2017-07-05')
