@@ -40,12 +40,12 @@ class Image():
     def __init__(
             self,
             image,
-            etr_source=None,
-            etr_band=None,
-            etr_factor=1.0,
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
+            etr_source=None,
+            etr_band=None,
+            etr_factor=1.0,
             mask_non_ag_flag=False,
             water_kc_flag=True,
             ):
@@ -56,14 +56,6 @@ class Image():
         image : ee.Image
             Required band: ndvi
             Required properties: system:time_start, system:index, system:id
-        etr_source : str, float, optional
-            Reference ET source (the default is None).
-            Parameter is required if computing 'et'.
-        etr_band : str, optional
-            Reference ET band name (the default is None).
-            Parameter is required if computing 'etr' or 'et'.
-        etr_factor : float, optional
-            Reference ET scaling factor (the default is 1.0).
         crop_type_source : str, optional
             Crop type source.  The default is the OpenET crop type image collection.
             The source should be an Earth Engine Image ID (or ee.Image).
@@ -74,6 +66,14 @@ class Image():
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients.
             The default is False.
+        etr_source : str, float, optional
+            Reference ET source (the default is None).
+            Parameter is required if computing 'et'.
+        etr_band : str, optional
+            Reference ET band name (the default is None).
+            Parameter is required if computing 'etr' or 'et'.
+        etr_factor : float, optional
+            Reference ET scaling factor (the default is 1.0).
         mask_non_ag_flag : bool, optional
             If True, mask all pixels that don't map to a crop_class.
             The default is False.
@@ -95,6 +95,7 @@ class Image():
         """
         self.image = image
 
+        # Reference ET parameters
         self.etr_source = etr_source
         self.etr_band = etr_band
         self.etr_factor = etr_factor
@@ -142,23 +143,23 @@ class Image():
         output_images = []
         for v in variables:
             if v.lower() == 'et':
-                output_images.append(self.et)
+                output_images.append(self.et.float())
             elif v.lower() == 'etr':
-                output_images.append(self.etr)
+                output_images.append(self.etr.float())
             elif v.lower() == 'etf':
-                output_images.append(self.etf)
+                output_images.append(self.etf.float())
             # elif v.lower() == 'crop_class':
             #     output_images.append(self.crop_class)
             # elif v.lower() == 'crop_type':
             #     output_images.append(self.crop_type)
             elif v.lower() == 'fc':
-                output_images.append(self.fc)
+                output_images.append(self.fc.float())
             elif v.lower() == 'kc':
-                output_images.append(self.kc)
+                output_images.append(self.kc.float())
             elif v.lower() == 'mask':
                 output_images.append(self.mask)
             elif v.lower() == 'ndvi':
-                output_images.append(self.ndvi)
+                output_images.append(self.ndvi.float())
             elif v.lower() == 'time':
                 output_images.append(self.time)
             else:
@@ -179,10 +180,10 @@ class Image():
         ee.Image
 
         """
-        return self.kc.rename(['etf']).set(self._properties).double()
+        return self.kc.rename(['etf']).set(self._properties)
         # ETf could also be calculated from ET and ETr
         # return self.et.divide(self.etr)\
-        #     .rename(['etf']).set(self._properties).double()
+        #     .rename(['etf']).set(self._properties)
 
     @lazy_property
     def etr(self):
@@ -211,7 +212,7 @@ class Image():
 
         return self.ndvi.multiply(0).add(etr_img)\
             .multiply(self.etr_factor)\
-            .rename(['etr']).set(self._properties).double()
+            .rename(['etr']).set(self._properties)
 
     @lazy_property
     def et(self):
@@ -223,7 +224,7 @@ class Image():
 
         """
         return self.kc.multiply(self.etr)\
-            .rename(['et']).set(self._properties).double()
+            .rename(['et']).set(self._properties)
 
     @lazy_property
     def crop_class(self):
@@ -264,7 +265,7 @@ class Image():
 
         """
         return self.model.fc(self.ndvi)\
-            .rename(['fc']).set(self._properties).double()
+            .rename(['fc']).set(self._properties)
 
     @lazy_property
     def kc(self):
@@ -276,7 +277,7 @@ class Image():
 
         """
         return self.model.kc(self.ndvi)\
-            .rename(['kc']).set(self._properties).double()
+            .rename(['kc']).set(self._properties)
 
     @lazy_property
     def mask(self):
@@ -301,7 +302,7 @@ class Image():
         ee.Image
 
         """
-        return self.image.select(['ndvi']).set(self._properties).double()
+        return self.image.select(['ndvi']).set(self._properties)
 
     # @lazy_property
     # def quality(self):
@@ -320,7 +321,7 @@ class Image():
         """
         return self.mask\
             .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
-            .rename(['time']).set(self._properties).double()
+            .rename(['time']).set(self._properties)
 
     @classmethod
     def from_image_id(cls, image_id, **kwargs):

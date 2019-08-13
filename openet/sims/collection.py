@@ -525,7 +525,7 @@ class Collection():
         #     interp_method=interp_method,  interp_days=interp_days)
 
         # Compute ET from ETf and ETr (if necessary)
-        if 'et' in variables:
+        if 'et' in variables or 'etf' in variables:
             def compute_et(img):
                 """This function assumes ETr and ETf are present"""
                 et_img = img.select(['etf']).multiply(img.select(['etr']))
