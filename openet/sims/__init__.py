@@ -1,4 +1,6 @@
 from .image import Image
 from .collection import Collection
 
-__version__ = "0.0.4"
+__version__ = "0.0.10"
+
+MODEL_NAME = 'SIMS'

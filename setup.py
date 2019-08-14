@@ -28,7 +28,7 @@ version = find_version('openet', model_name.lower(), '__init__.py')
 
 # Get the long description from the README file
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
@@ -43,7 +43,7 @@ setup(
     url='https://github.com/Open-ET/openet-{}-beta'.format(model_name.lower()),
     download_url='https://github.com/Open-ET/openet-{}-beta/archive/v{}.tar.gz'.format(
 		model_name.lower(), version),
-    install_requires=['earthengine-api', 'oauth2client', 'openet-core'],
+    install_requires=['earthengine-api', 'openet-core'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'pytest-cov'],
     packages=['openet.{}'.format(model_name.lower())],

@@ -13,6 +13,8 @@
 
 import ee
 
+from .model import Model
+# from . import model
 from . import utils
 import openet.core.common as common
 # import utils
@@ -38,20 +40,32 @@ class Image():
     def __init__(
             self,
             image,
+            crop_type_source='USDA/NASS/CDL',
+            crop_type_remap='CDL',
+            crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             etr_source=None,
             etr_band=None,
             etr_factor=1.0,
-            crop_type_source='USDA/NASS/CDL',
-            crop_type_remap='CDL',
+            mask_non_ag_flag=False,
+            water_kc_flag=True,
             ):
-        """Construct a SIMS model based ET Image
+        """Earth Engine based SIMS image object
 
         Parameters
         ----------
         image : ee.Image
-            Must have bands: 'ndvi'
-            Must have properties: 'system:time_start', 'system:index', and
-                                  'system:id'
+            Required band: ndvi
+            Required properties: system:time_start, system:index, system:id
+        crop_type_source : str, optional
+            Crop type source.  The default is the OpenET crop type image collection.
+            The source should be an Earth Engine Image ID (or ee.Image).
+            Currently only the OpenET collection and CDL images are supported.
+        crop_type_remap : {'CDL'}, optional
+            Currently only CDL crop type values are supported.
+        crop_type_kc_flag : bool, optional
+            If True, compute Kc using crop type specific coefficients.
+            If False, use generic crop class coefficients.
+            The default is False.
         etr_source : str, float, optional
             Reference ET source (the default is None).
             Parameter is required if computing 'et'.
@@ -60,17 +74,16 @@ class Image():
             Parameter is required if computing 'etr' or 'et'.
         etr_factor : float, optional
             Reference ET scaling factor (the default is 1.0).
-        crop_type_source : str, optional
-            Crop type source.  The default is the OpenET crop type image collection.
-            The source should be an Earth Engine Image ID (or ee.Image).
-            Currently only the OpenET collection and CDL images are supported.
-        crop_type_remap : {'CDL'}, optional
-            Currently only CDL crop type values are supported.
+        mask_non_ag_flag : bool, optional
+            If True, mask all pixels that don't map to a crop_class.
+            The default is False.
+        water_kc_flag : bool, optional
+            If True, set Kc for water pixels to 1.05.  The default is True.
 
         Notes
         -----
         Fc = (NDVI * 1.26) - 0.18
-        Kc = f(Fc) [based on crop type]
+        Kc = f(Fc) [based on crop type or crop class]
         ETcb = Kc * ETo
 
         References
@@ -82,12 +95,10 @@ class Image():
         """
         self.image = image
 
+        # Reference ET parameters
         self.etr_source = etr_source
         self.etr_band = etr_band
         self.etr_factor = etr_factor
-
-        self.crop_type_source = crop_type_source
-        self.crop_type_remap = crop_type_remap
 
         # Get system properties from the input image
         self._id = self.image.get('system:id')
@@ -104,6 +115,18 @@ class Image():
         self._year = ee.Number(self._date.get('year'))
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
+        self._doy = self._date.getRelative('day', 'year').add(1).int()
+
+        # CGM - Model class could inherit these from Image instead of passing them
+        #   Could pass time_start instead of separate year and doy
+        self.model = Model(
+            year=self._year, doy=self._doy,
+            crop_type_source=crop_type_source,
+            crop_type_remap=crop_type_remap,
+            crop_type_kc_flag=crop_type_kc_flag,
+            mask_non_ag_flag=mask_non_ag_flag,
+            water_kc_flag=water_kc_flag,
+        )
 
     def calculate(self, variables=['et']):
         """Return a multiband image of calculated variables
@@ -120,23 +143,23 @@ class Image():
         output_images = []
         for v in variables:
             if v.lower() == 'et':
-                output_images.append(self.et)
+                output_images.append(self.et.float())
             elif v.lower() == 'etr':
-                output_images.append(self.etr)
+                output_images.append(self.etr.float())
             elif v.lower() == 'etf':
-                output_images.append(self.etf)
+                output_images.append(self.etf.float())
             # elif v.lower() == 'crop_class':
             #     output_images.append(self.crop_class)
             # elif v.lower() == 'crop_type':
             #     output_images.append(self.crop_type)
             elif v.lower() == 'fc':
-                output_images.append(self.fc)
+                output_images.append(self.fc.float())
             elif v.lower() == 'kc':
-                output_images.append(self.kc)
+                output_images.append(self.kc.float())
             elif v.lower() == 'mask':
                 output_images.append(self.mask)
             elif v.lower() == 'ndvi':
-                output_images.append(self.ndvi)
+                output_images.append(self.ndvi.float())
             elif v.lower() == 'time':
                 output_images.append(self.time)
             else:
@@ -157,10 +180,10 @@ class Image():
         ee.Image
 
         """
-        return self.kc.rename(['etf']).set(self._properties).double()
+        return self.kc.rename(['etf']).set(self._properties)
         # ETf could also be calculated from ET and ETr
         # return self.et.divide(self.etr)\
-        #     .rename(['etf']).set(self._properties).double()
+        #     .rename(['etf']).set(self._properties)
 
     @lazy_property
     def etr(self):
@@ -189,7 +212,7 @@ class Image():
 
         return self.ndvi.multiply(0).add(etr_img)\
             .multiply(self.etr_factor)\
-            .rename(['etr']).set(self._properties).double()
+            .rename(['etr']).set(self._properties)
 
     @lazy_property
     def et(self):
@@ -201,141 +224,36 @@ class Image():
 
         """
         return self.kc.multiply(self.etr)\
-            .rename(['et']).set(self._properties).double()
+            .rename(['et']).set(self._properties)
 
     @lazy_property
     def crop_class(self):
         """Generic crop classes
 
-        The current OpenET SIMS model only supports three generic crop classes.
-        This method will map the crop type codes to the three classes.
-        Currently, only CDL crop type codes are supported.
-
-        Parameters
-        ----------
-        self.crop_type : ee.Image
-        self.crop_type_remap : str
-
         Returns
         -------
         ee.Image
 
-        Raises
-        ------
-        ValueError for unsupported crop_type_remap
-
         """
-        if self.crop_type_remap.upper() == 'CDL':
-            # Group the "from" values in a list for each "to" value
-            remap_dict = {
-                1: [1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14,
-                    21, 22, 23, 24, 25, 26, 27, 28, 29,
-                    30, 31, 32, 33, 34, 35, 36, 37, 38,
-                    41, 42, 43, 44, 45, 46, 47, 48, 49,
-                    50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 80, 182,
-                    202, 205, 206, 207, 208, 209, 213, 214, 216, 219,
-                    221, 222, 224, 225, 226, 227, 228, 229,
-                    230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
-                    240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 254],
-                2: [69],
-                3: [66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77,
-                    201, 203, 204, 210, 211, 212, 215, 217, 218, 220, 223],
-            }
-        else:
-            raise ValueError('unsupported crop_type_remap: "{}"'.format(
-                self.crop_type_remap))
-
-        remap_dict = {f: t for t, from_list in remap_dict.items() for f in from_list}
-        remap_from, remap_to = zip(*sorted(remap_dict.items()))
-
         # Map the the crop class values to the NDVI image
         return self.ndvi.multiply(0)\
-            .add(self.crop_type.remap(remap_from, remap_to, 0, 'crop_type'))\
+            .add(self.model.crop_class)\
             .rename('crop_class').set(self._properties)
-        # CGM I'm not sure why this was being mapped to a double
-        #     .double()
 
     @lazy_property
     def crop_type(self):
         """Crop type
 
-        Parameters
-        ----------
-        crop_type_source : int, str
-            CDL image collection ID: 'USDA/NASS/CDL'
-                Collection will be filtered to a single year that is closest
-                to the Image year.
-            CDL image ID for a specific year: 'USDA/NASS/CDL/2018'
-            OpenET crop type image collection ID: 'projects/openet/crop_type'
-                Collection will be mosaiced to a single image.
-            Integer (will be converted to an EE constant image)
-
         Returns
         -------
         ee.Image
 
-        Raises
-        ------
-        ValueError for unsupported crop_type_sources
-
         """
-        properties = ee.Dictionary()
-
-        if utils.is_number(self.crop_type_source):
-            # Interpret numbers as constant images
-            # CGM - Should we use the ee_types here instead?
-            #   i.e. ee.ee_types.isNumber(self.etr_source)
-            crop_type_img = self.crop_type_source
-            # properties = properties.set('id', 'constant')
-
-        elif (type(self.crop_type_source) is str and
-              self.crop_type_source.upper() == 'USDA/NASS/CDL'):
-            # Use the CDL image closest to the image date
-            # Hardcoding the CDL year range but it could be computed dynamically
-            cdl_year_min = ee.Number(2008)
-            cdl_year_max = ee.Number(2018)
-            # cdl_year_max = ee.Date(ee.ImageCollection('USDA/NASS/CDL')
-            #     .limit(1, 'system:index', False).first()
-            #     .get('system:time_start')).get('year')
-            # cdl_year_max = ee.Number.parse(ee.ImageCollection('USDA/NASS/CDL')\
-            #     .limit(1, 'system:index', False).first().get('system:index'))
-
-            start_year = self._year.min(cdl_year_max).max(cdl_year_min)
-            start_date = ee.Date.fromYMD(start_year, 1, 1)
-            end_date = ee.Date.fromYMD(start_year.add(1), 1, 1)
-            cdl_coll = ee.ImageCollection('USDA/NASS/CDL')\
-                .filterDate(start_date, end_date)\
-                .select(['cropland'])
-            crop_type_img = ee.Image(cdl_coll.first())
-            # pprint.pprint(crop_type_img.getInfo())
-            properties = properties.set('id', crop_type_img.get('system:id'))
-            # pprint.pprint(properties.getInfo())
-
-        elif (type(self.crop_type_source) is str and
-              self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
-            crop_type_img = ee.Image(self.crop_type_source)\
-                .select(['cropland'])
-            # pprint.pprint(crop_type_img.getInfo())
-            properties = properties.set('id', crop_type_img.get('system:id'))
-            # pprint.pprint(properties.getInfo())
-
-        elif (type(self.crop_type_source) is str and
-              self.crop_type_source.lower() == 'projects/openet/crop_type'):
-            crop_type_img = ee.ImageCollection(self.crop_type_source).mosaic()
-            # properties = properties.set('id', 'projects/openet/crop_type')
-
-        # TODO: Support ee.Image and ee.ImageCollection sources
-        # elif isinstance(self.crop_type_source, computedobject.ComputedObject):
-
-        else:
-            raise ValueError('unsupported crop_type_source: {}'.format(
-                self.crop_type_source))
-
-        # CGM - Should the crop type images all be mapped onto the Image
-        #   or just returned as is
-        # Should the image properties be set onto the image also?
-        return self.ndvi.multiply(0).add(crop_type_img).rename(['crop_type'])\
-            .set(properties)
+        # Map the the crop class values to the NDVI image
+        # Crop type image ID property is set in model function
+        return self.ndvi.multiply(0)\
+            .add(self.model.crop_type)\
+            .rename(['crop_type'])
 
     @lazy_property
     def fc(self):
@@ -346,9 +264,8 @@ class Image():
         ee.Image
 
         """
-        return self.ndvi.multiply(1.26).subtract(0.18)\
-            .clamp(0, 1)\
-            .rename(['fc']).set(self._properties).double()
+        return self.model.fc(self.ndvi)\
+            .rename(['fc']).set(self._properties)
 
     @lazy_property
     def kc(self):
@@ -358,59 +275,9 @@ class Image():
         -------
         ee.Image
 
-        Noes
-        ----
-        Generic Fc-Kcb conversion for:
-        Annuals-
-            Melton, F., L. Johnson, C. Lund, L. Pierce, A. Michaelis, S. Hiatt,
-            A. Guzman, D. Adhikari, A. Purdy, C. Rosevelt, P. Votava, T. Trout,
-            B. Temesgen, K. Frame, E. Sheffner, and R. Nemani, 2012.
-            Satellite Irrigation Management Support with the Terrestrial
-            Observation and Prediction System: An Operational Framework for
-            Integration of Satellite and Surface Observations to Support
-            Improvements in Agricultural Water Resource Management.
-            IEEE J. Selected Topics in Applied Earth Observations & Remote Sensing
-            5:1709-1721.  [FIG 2b]
-        Vines-
-            Williams, L. and J. Ayars, 2005.  Grapevine water use and the crop
-            coefficient are linear functions of the shaded area measured beneath
-            the canopy, Ag. For. Meteor 132:201-211.  [FIG 10]
-        Trees-
-            Ayars, J., R. Johnson, C. Phene, T. Trout, D. Clark, and R. Mead, 2003.
-            Water use by drip-irrigated late-season peaches.
-            Irrig. Sci. 22:187-194.  [EQN 7]
-
-        Crop specific Fc-Kcb conversion:
-            Allen, R., and L. Pereira, 2009.  Estimating crop coefficients from
-            fraction of ground cover and height.  Irrig. Sci. 28:17-34.
-            [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals from Table 2; 5a (Kcb)]
-
         """
-        # I haven't implemented the crop-specific equations for this version.
-        # We would first run the crop-specific before doing the generic equations
-        fc_zero = self.fc.multiply(0)
-
-        # Generic equation for annual crops
-        img_expr = self.fc.expression(
-            "((b('fc') ** 2) * -0.4771) + (1.4047 * b('fc')) + 0.15")
-        kc1 = fc_zero.where(self.crop_class.eq(1), img_expr)
-
-        # Generic equation for vines
-        kc2 = fc_zero.where(self.crop_class.eq(2), self.fc.multiply(1.7))
-
-        # Generic equation for trees
-        kc3 = fc_zero.where(
-            self.crop_class.eq(3),
-            self.fc.multiply(1.48).add(0.007))
-
-        # Add up all the Kcs
-        kc = kc1.add(kc2).add(kc3).clamp(0, 1.25)
-
-        # CGM - Set all non-ag cells to nodata
-        #   It might make more sense to do this to crop_type or crop_class
-        kc = kc.updateMask(self.crop_class.gt(0))
-
-        return kc.rename(['kc']).set(self._properties).double()
+        return self.model.kc(self.ndvi)\
+            .rename(['kc']).set(self._properties)
 
     @lazy_property
     def mask(self):
@@ -435,7 +302,7 @@ class Image():
         ee.Image
 
         """
-        return self.image.select(['ndvi']).set(self._properties).double()
+        return self.image.select(['ndvi']).set(self._properties)
 
     # @lazy_property
     # def quality(self):
@@ -454,7 +321,7 @@ class Image():
         """
         return self.mask\
             .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
-            .rename(['time']).set(self._properties).double()
+            .rename(['time']).set(self._properties)
 
     @classmethod
     def from_image_id(cls, image_id, **kwargs):
@@ -548,17 +415,18 @@ class Image():
         return cls(input_image, **kwargs)
 
     @staticmethod
-    def _ndvi(sr_image):
-        """Compute NDVI
+    def _ndvi(landsat_image):
+        """Normalized difference vegetation index
 
         Parameters
         ----------
-        sr_image : ee.Image
-            Renamed SR image with bands 'nir' and 'red'.
+        landsat_image : ee.Image
+            "Prepped" Landsat image with standardized band names.
 
         Returns
         -------
         ee.Image
 
         """
-        return sr_image.normalizedDifference(['nir', 'red']).rename(['ndvi'])
+        return landsat_image.normalizedDifference(['nir', 'red'])\
+            .rename(['ndvi'])
