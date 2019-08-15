@@ -71,7 +71,7 @@ def test_Collection_init_default_parameters():
     assert m.variables == None
     assert m.etr_source == None
     assert m.etr_band == None
-    assert m.etr_factor == 1.0
+    assert m.etr_factor == None
     assert m.cloud_cover_max == 70
     assert m.model_args == {}
     assert m.filter_args == {}
@@ -331,18 +331,73 @@ def test_Collection_interpolate_t_interval_custom():
 #     # Is there any way to test this without pulling values at a point?
 
 
-# This is already being tested by test_Collection_interpolate_default() above
-# def test_Collection_interpolate_etr_source_init():
-#     """Test setting etr_source in the class init"""
+def test_Collection_interpolate_etr_source_not_set():
+    """Test if Exception is raised if etr_source is not set"""
+    args = default_coll_args()
+    del args['etr_source']
+    with pytest.raises(ValueError):
+        utils.getinfo(sims.Collection(**args).interpolate())
+
+
+def test_Collection_interpolate_etr_band_not_set():
+    """Test if Exception is raised if etr_band is not set"""
+    args = default_coll_args()
+    del args['etr_band']
+    with pytest.raises(ValueError):
+        utils.getinfo(sims.Collection(**args).interpolate())
+
+
+def test_Collection_interpolate_etr_factor_not_set():
+    """Test if Exception is raised if etr_factor is not set"""
+    args = default_coll_args()
+    del args['etr_factor']
+    with pytest.raises(ValueError):
+        utils.getinfo(sims.Collection(**args).interpolate())
+
+
+# # Collection doesn't check if etr_source is valid, that is only in Image
+# def test_Collection_interpolate_etr_source_invalid():
+#     """Test if Exception is raised if etr_source is invalid"""
 #     args = default_coll_args()
-#     args.update({'etr_source': 'IDAHO_EPSCOR/GRIDMET', 'etr_band': 'etr'})
-#     output = utils.getinfo(sims.Collection(**args).interpolate())
-#     assert VARIABLES == sorted(list(set([
-#         y['id'] for x in output['features'] for y in x['bands']])))
+#     args['model_args'] = {'etr_source': 'DEADBEEF', 'etr_band': 'etr'}
+#     with pytest.raises(ValueError):
+#         utils.getinfo(sims.Collection(**args).interpolate())
 
 
-def test_Collection_interpolate_etr_source_model_args():
-    """Test setting etr_source in the model_args"""
+# # Collection doesn't check if etr_band is valid, that is only in Image
+# def test_Collection_interpolate_etr_band_invalid():
+#     """Test if Exception is raised if etr_band is invalid"""
+#     args = default_coll_args()
+#     args['model_args'] = {'etr_source': 'IDAHO_EPSCOR/GRIDMET',
+#                           'etr_band': 'DEADBEEF'}
+#     with pytest.raises(ValueError):
+#         utils.getinfo(sims.Collection(**args).interpolate())
+
+
+# # Collection doesn't check if etr_factor is valid, that is only in Image
+# def test_Collection_interpolate_etr_factor_invalid():
+#     """Test if Exception is raised if etr_factor is invalid"""
+#     args = default_coll_args()
+#     args['model_args'] = {'etr_factor': -1}
+#     with pytest.raises(ValueError):
+#         utils.getinfo(sims.Collection(**args).interpolate())
+
+
+def test_Collection_interpolate_etr_params_init_args():
+    """Test setting etr parameters in the Collection init args"""
+    args = default_coll_args()
+    del args['etr_source']
+    del args['etr_band']
+    del args['etr_factor']
+    output = utils.getinfo(sims.Collection(
+        etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr', etr_factor=0.85,
+        **args).interpolate())
+    assert VARIABLES == sorted(list(set([
+        y['id'] for x in output['features'] for y in x['bands']])))
+
+
+def test_Collection_interpolate_etr_params_model_args():
+    """Test setting etr parameters in the model_args"""
     args = default_coll_args()
     del args['etr_source']
     del args['etr_band']
@@ -354,44 +409,17 @@ def test_Collection_interpolate_etr_source_model_args():
         y['id'] for x in output['features'] for y in x['bands']])))
 
 
-# CGM - I don't understand why this test fails
-# def test_Collection_interpolate_etr_source_interpolate_args():
-#     """Test setting etr_source in the interpolate call"""
-#     args = default_coll_args()
-#     del args['etr_source']
-#     del args['etr_band']
-#     del args['etr_factor']
-#     etr_kwargs = {'etr_source': 'IDAHO_EPSCOR/GRIDMET',
-#                   'etr_band': 'etr', 'etr_factor': 0.85}
-#     output = utils.getinfo(sims.Collection(**args).interpolate(**etr_kwargs))
-#     assert VARIABLES == sorted(list(set([
-#         y['id'] for x in output['features'] for y in x['bands']])))
-
-
-def test_Collection_interpolate_etr_source_not_set():
-    """Test if Exception is raised if etr_source is not set"""
+def test_Collection_interpolate_etr_params_interpolate_args():
+    """Test setting etr parameters in the interpolate call"""
     args = default_coll_args()
     del args['etr_source']
-    # del args['etr_band']
-    with pytest.raises(ValueError):
-        utils.getinfo(sims.Collection(**args).interpolate())
-
-
-# def test_Collection_interpolate_etr_source_exception():
-#     """Test if Exception is raised if etr_source is invalid"""
-#     args = default_coll_args()
-#     args['model_args'] = {'etr_source': 'DEADBEEF', 'etr_band': 'etr'}
-#     with pytest.raises(ValueError):
-#         utils.getinfo(sims.Collection(**args).interpolate())
-
-
-# def test_Collection_interpolate_etr_band_exception():
-#     """Test if Exception is raised if etr_band is invalid"""
-#     args = default_coll_args()
-#     args['model_args'] = {'etr_source': 'IDAHO_EPSCOR/GRIDMET',
-#                           'etr_band': 'DEADBEEF'}
-#     with pytest.raises(ValueError):
-#         utils.getinfo(sims.Collection(**args).interpolate())
+    del args['etr_band']
+    del args['etr_factor']
+    etr_kwargs = {'etr_source': 'IDAHO_EPSCOR/GRIDMET',
+                  'etr_band': 'etr', 'etr_factor': 0.85}
+    output = utils.getinfo(sims.Collection(**args).interpolate(**etr_kwargs))
+    assert VARIABLES == sorted(list(set([
+        y['id'] for x in output['features'] for y in x['bands']])))
 
 
 def test_Collection_interpolate_t_interval_exception():

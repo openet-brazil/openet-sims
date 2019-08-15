@@ -52,14 +52,17 @@ class Collection():
             geometry,
             variables=None,
             cloud_cover_max=70,
+            # CGM - Should should probably not be separate parameters and should
+            #   only be set through model_args or kwargs
             etr_source=None,
             etr_band=None,
-            etr_factor=1.0,
+            etr_factor=None,
             filter_args=None,
-            # TODO: Split model_args into "image_args" and "model_args"?
+            # CGM: Should model_args be split up into image_args, model_args?
             model_args=None,
             # model_args={'etr_source': 'IDAHO_EPSCOR/GRIDMET',
-            #             'etr_band': 'etr'},
+            #             'etr_band': 'etr',
+            #             'etr_factor': 1.0},
             # **kwargs
         ):
         """Earth Engine based SIMS ETcb Image Collection object
@@ -84,13 +87,14 @@ class Collection():
                 - Landsat SR: CLOUD_COVER_LAND
                 - Sentinel2: CLOUDY_PIXEL_PERCENTAGE
         etr_source : str, float, optional
-            Reference ET source (the default is None).  Parameter must be
-            set here, in class init, or in model_args (searched in that order).
+            Reference ET source (the default is None).  Parameter must
+            be set here (in class init) or model args to compute ET or ETr.
         etr_band : str, optional
-            Reference ET band name (the default is None).  Parameter must be
-            set here, in class init, or in model_args (searched in that order).
+            Reference ET band name (the default is None).  Parameter must
+            be set here (in class init) or model args to compute ET or ETr.
         etr_factor : float, optional
-            Reference ET scaling factor (the default is 1.0).
+            Reference ET scaling factor (the default is None).  Parameter must
+            be set here (in class init) or model args to compute ET or ETr.
         filter_args : dict
             Image collection filter keyword arguments (the default is None).
             Organize filter arguments as a nested dictionary with the primary
@@ -125,12 +129,12 @@ class Collection():
             self.model_args['etr_source'] = etr_source
         if etr_band is not None:
             self.model_args['etr_band'] = etr_band
-        if etr_factor != 1.0:
+        if etr_factor is not None:
             self.model_args['etr_factor'] = etr_factor
 
         # Model specific variables that can be interpolated to a daily timestep
         # Should this be specified in the interpolation method instead?
-        # self._interp_vars = ['ndvi', 'etf']
+        self._interp_vars = ['ndvi', 'etf']
 
         self._landsat_c1_sr_collections = [
             'LANDSAT/LC08/C01/T1_SR',
@@ -293,7 +297,8 @@ class Collection():
 
     def interpolate(self, variables=None, t_interval='custom',
                     interp_method='linear', interp_days=32,
-                    etr_source=None, etr_band=None, etr_factor=1.0,
+                    # CGM - The etr params should probably not be inputs
+                    etr_source=None, etr_band=None, etr_factor=None,
                     output_type='float'):
         """
 
@@ -392,90 +397,89 @@ class Collection():
         interp_start_date = interp_start_dt.date().isoformat()
         interp_end_date = interp_end_dt.date().isoformat()
 
+        # TODO: model_args needs to be updated if the etr parameters were set on the interpolate call directly
+
         # Get ETr source
         if etr_source is not None:
-            pass
+            self.model_args['etr_source'] = etr_source
         elif self.etr_source is not None:
-            etr_source  = self.etr_source
+            self.model_args['etr_source']  = self.etr_source
         elif ('etr_source' in self.model_args.keys() and
                 self.model_args['etr_source']):
-            etr_source = self.model_args['etr_source']
+            pass
         else:
             raise ValueError('etr_source was not set')
 
         # Get ETr band name
         if etr_band is not None:
-            pass
+            self.model_args['etr_band'] = etr_band
         elif self.etr_band is not None:
-            etr_band  = self.etr_band
+            self.model_args['etr_band']  = self.etr_band
         elif ('etr_band' in self.model_args.keys() and
                 self.model_args['etr_band']):
-            etr_band = self.model_args['etr_band']
+            pass
         else:
             raise ValueError('etr_band was not set')
 
         # Get ETr factor
         if etr_factor is not None:
-            pass
+            self.model_args['etr_factor'] = etr_factor
         elif self.etr_factor is not None:
-            etr_factor  = self.etr_factor
+            self.model_args['etr_factor']  = self.etr_factor
         elif 'etr_factor' in self.model_args.keys():
-            etr_factor = self.model_args['etr_factor']
+            pass
         else:
             raise ValueError('etr_factor was not set')
 
-        if type(etr_source) is str:
+        if type(self.model_args['etr_source']) is str:
             # Assume a string source is an single image collection ID
             #   not an list of collection IDs or ee.ImageCollection
-            daily_et_reference_coll = ee.ImageCollection(etr_source)\
+            daily_etr_coll = ee.ImageCollection(self.model_args['etr_source'])\
                 .filterDate(start_date, end_date)\
-                .select([etr_band], ['etr'])
-        # elif type(etr_source) is list:
+                .select([self.model_args['etr_band']], ['etr'])
+        # elif type(self.model_args['etr_source']) is list:
         #     # Interpret as list of image collection IDs to composite/mosaic
         #     #   i.e. Spatial CIMIS and GRIDMET
         #     # CGM - The following from the Image class probably won't work
         #     #   I think the two collections will need to be joined together,
         #     #   probably in some sort of mapped function
-        #     daily_et_reference_coll = ee.ImageCollection([])
-        #     for coll_id in etr_source:
+        #     daily_etr_coll = ee.ImageCollection([])
+        #     for coll_id in self.model_args['etr_source']:
         #         coll = ee.ImageCollection(coll_id)\
-        #             .select([etr_band])\
+        #             .select([self.model_args['etr_band']])\
         #             .filterDate(self.start_date, self.end_date)
-        #         daily_et_reference_coll = daily_et_reference_coll.merge(coll)
-        # elif isinstance(etr_source, computedobject.ComputedObject):
+        #         daily_etr_coll = daily_etr_coll.merge(coll)
+        # elif isinstance(self.model_args['etr_source'], computedobject.ComputedObject):
         #     # Interpret computed objects as image collections
-        #     daily_et_reference_coll = ee.ImageCollection(etr_source)\
-        #         .select([etr_band])\
+        #     daily_etr_coll = ee.ImageCollection(self.model_args['etr_source'])\
+        #         .select([self.model_args['etr_band']])\
         #         .filterDate(self.start_date, self.end_date)
         else:
             raise ValueError('unsupported etr_source: {}'.format(etr_source))
 
         # Initialize variable list to only variables that can be interpolated
-        # daily_vars = list(set(self._interp_vars) & set(variables))
+        interp_vars = list(set(self._interp_vars) & set(variables))
 
-        # Determine which scene variables need to be "built"
-        scene_vars = variables[:]
-        # The ETf will be computed from the ET and ETr
-        if 'etf' in variables:
-            scene_vars.remove('etf')
         # To return ET, the ETf must be interpolated
-        if 'et' in variables and 'etf' not in scene_vars:
-            scene_vars.append('etf')
+        if 'et' in variables and 'etf' not in interp_vars:
+            interp_vars.append('etf')
+
         # With the current interp.daily() function,
         #   something has to be interpolated in order to return etr
-        if 'etr' in variables and 'etf' not in scene_vars:
-           scene_vars.append('etf')
+        if 'etr' in variables and 'etf' not in interp_vars:
+            interp_vars.append('etf')
+
         # The time band is always needed for interpolation
-        scene_vars.append('time')
+        interp_vars.append('time')
 
         # Count will be determined using the aggregate_coll image masks
         if 'count' in variables:
-            scene_vars.append('mask')
-            scene_vars.remove('count')
+            interp_vars.append('mask')
+            # interp_vars.remove('count')
 
         # Build initial scene image collection
         scene_coll = self._build(
-            variables=scene_vars, start_date=interp_start_date,
+            variables=interp_vars, start_date=interp_start_date,
             end_date=interp_end_date)
 
         # For count, compute the composite/mosaic image for the mask band only
@@ -488,15 +492,15 @@ class Collection():
         # Including count/mask causes problems in interp.daily() function.
         # Issues with mask being an int but the values need to be double.
         # Casting the mask band to a double would fix this problem also.
-        if 'mask' in scene_vars:
-            scene_vars.remove('mask')
+        if 'mask' in interp_vars:
+            interp_vars.remove('mask')
 
         # Interpolate to a daily time step
         # NOTE: the daily function is not computing ET (ETf x ETr)
         #   but is returning the target (ETr) band
         daily_coll = interp.daily(
-            target_coll=daily_et_reference_coll,
-            source_coll=scene_coll.select(scene_vars),
+            target_coll=daily_etr_coll,
+            source_coll=scene_coll.select(interp_vars),
             interp_method=interp_method, interp_days=interp_days,
         )
 
@@ -520,7 +524,7 @@ class Collection():
         # # NOTE: the daily function is not computing ET (ETf x ETr)
         # #   but is returning the target (ETr) band
         # daily_coll = interp.daily(
-        #     target_coll=daily_et_reference_coll,
+        #     target_coll=daily_etr_coll,
         #     source_coll=aggregate_coll.select(interp_vars),
         #     interp_method=interp_method,  interp_days=interp_days)
 
@@ -531,7 +535,7 @@ class Collection():
                 et_img = img.select(['etf']).multiply(img.select(['etr']))
                 return img.addBands(et_img.rename('et'))
                 # img_dt = ee.Date(img.get('system:time_start'))
-                # etr_coll = daily_et_reference_coll\
+                # etr_coll = daily_etr_coll\
                 #     .filterDate(img_dt, img_dt.advance(1, 'day'))
                 # Set ETr to Landsat resolution/projection?
                 # etr_img = img.select(['etf']).multiply(0)\
@@ -576,10 +580,10 @@ class Collection():
             """
             # if 'et' in variables or 'etf' in variables:
             et_img = daily_coll.filterDate(agg_start_date, agg_end_date)\
-                .select(['et']).sum().multiply(etr_factor)
+                .select(['et']).sum().multiply(self.model_args['etr_factor'])
             # if 'etr' in variables or 'etf' in variables:
             etr_img = daily_coll.filterDate(agg_start_date, agg_end_date)\
-                .select(['etr']).sum().multiply(etr_factor)
+                .select(['etr']).sum().multiply(self.model_args['etr_factor'])
 
             # Round and save ET and ETr as integer values to save space
             # Ensure that ETr > 0 after rounding to avoid divide by zero
