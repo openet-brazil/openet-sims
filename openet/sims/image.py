@@ -48,7 +48,7 @@ class Image():
             etr_factor=1.0,
             mask_non_ag_flag=False,
             water_kc_flag=True,
-            ):
+        ):
         """Earth Engine based SIMS image object
 
         Parameters
@@ -68,10 +68,10 @@ class Image():
             The default is False.
         etr_source : str, float, optional
             Reference ET source (the default is None).
-            Parameter is required if computing 'et'.
+            Parameter is required if computing 'et' or 'etr'.
         etr_band : str, optional
             Reference ET band name (the default is None).
-            Parameter is required if computing 'etr' or 'et'.
+            Parameter is required if computing 'et' or 'etr'.
         etr_factor : float, optional
             Reference ET scaling factor (the default is 1.0).
         mask_non_ag_flag : bool, optional
@@ -95,11 +95,6 @@ class Image():
         """
         self.image = image
 
-        # Reference ET parameters
-        self.etr_source = etr_source
-        self.etr_band = etr_band
-        self.etr_factor = etr_factor
-
         # Get system properties from the input image
         self._id = self.image.get('system:id')
         self._index = self.image.get('system:index')
@@ -116,6 +111,11 @@ class Image():
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
         self._doy = self._date.getRelative('day', 'year').add(1).int()
+
+        # Reference ET parameters
+        self.etr_source = etr_source
+        self.etr_band = etr_band
+        self.etr_factor = etr_factor
 
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
