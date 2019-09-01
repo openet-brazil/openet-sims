@@ -40,7 +40,7 @@ def default_image(ndvi=0.8):
 # Setting etr_source and etr_band on the default image to simplify testing
 #   but these do not have defaults in the Image class init
 def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
-                       etr_band='etr', etr_factor=0.85,
+                       etr_band='etr', etr_factor=0.85, etr_resample='nearest',
                        crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                        crop_type_kc_flag=False, mask_non_ag_flag=False):
     return {
@@ -48,6 +48,7 @@ def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
         'etr_source': etr_source,
         'etr_band': etr_band,
         'etr_factor': etr_factor,
+        'etr_resample': etr_resample,
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
@@ -56,16 +57,14 @@ def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
 
 
 def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
-                      etr_band='etr', etr_factor=0.85,
+                      etr_band='etr', etr_factor=0.85, etr_resample='nearest',
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                       crop_type_kc_flag=False, mask_non_ag_flag=False):
     return sims.Image(**default_image_args(
-        ndvi=ndvi,
-        etr_source=etr_source, etr_band=etr_band, etr_factor=etr_factor,
-        crop_type_source=crop_type_source,
-        crop_type_remap=crop_type_remap,
-        crop_type_kc_flag=crop_type_kc_flag,
-        mask_non_ag_flag=mask_non_ag_flag,
+        ndvi=ndvi, etr_source=etr_source, etr_band=etr_band,
+        etr_factor=etr_factor, etr_resample=etr_resample,
+        crop_type_source=crop_type_source, crop_type_remap=crop_type_remap,
+        crop_type_kc_flag=crop_type_kc_flag, mask_non_ag_flag=mask_non_ag_flag,
     ))
 
 
@@ -73,7 +72,8 @@ def test_Image_init_default_parameters():
     m = sims.Image(image=default_image())
     assert m.etr_source == None
     assert m.etr_band == None
-    assert m.etr_factor == 1.0
+    assert m.etr_factor == None
+    assert m.etr_resample == None
     # assert m.crop_type_source == 'USDA/NASS/CDL'
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
