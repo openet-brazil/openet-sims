@@ -34,7 +34,7 @@ class Model():
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             mask_non_ag_flag=False,
             water_kc_flag=True,
-            ):
+        ):
         """Earth Engine based SIMS model object
 
         Parameters

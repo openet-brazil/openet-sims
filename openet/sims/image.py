@@ -45,10 +45,11 @@ class Image():
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             etr_source=None,
             etr_band=None,
-            etr_factor=1.0,
+            etr_factor=None,
+            etr_resample=None,
             mask_non_ag_flag=False,
             water_kc_flag=True,
-            ):
+        ):
         """Earth Engine based SIMS image object
 
         Parameters
@@ -68,12 +69,16 @@ class Image():
             The default is False.
         etr_source : str, float, optional
             Reference ET source (the default is None).
-            Parameter is required if computing 'et'.
+            Parameter is required if computing 'et' or 'etr'.
         etr_band : str, optional
             Reference ET band name (the default is None).
-            Parameter is required if computing 'etr' or 'et'.
-        etr_factor : float, optional
-            Reference ET scaling factor (the default is 1.0).
+            Parameter is required if computing 'et' or 'etr'.
+        etr_factor : float, None, optional
+            Reference ET scaling factor.  The default is None which is
+            equivalent to 1.0 (or no scaling).
+        etr_resample : {'nearest', 'bilinear', 'bicubic', None}, optional
+            Reference ET resampling.  The default is None which is equivalent
+            to nearest neighbor resampling.
         mask_non_ag_flag : bool, optional
             If True, mask all pixels that don't map to a crop_class.
             The default is False.
@@ -95,11 +100,6 @@ class Image():
         """
         self.image = image
 
-        # Reference ET parameters
-        self.etr_source = etr_source
-        self.etr_band = etr_band
-        self.etr_factor = etr_factor
-
         # Get system properties from the input image
         self._id = self.image.get('system:id')
         self._index = self.image.get('system:index')
@@ -116,6 +116,21 @@ class Image():
         self._start_date = ee.Date(utils.date_to_time_0utc(self._date))
         self._end_date = self._start_date.advance(1, 'day')
         self._doy = self._date.getRelative('day', 'year').add(1).int()
+
+        # Reference ET parameters
+        self.etr_source = etr_source
+        self.etr_band = etr_band
+        self.etr_factor = etr_factor
+        self.etr_resample = etr_resample
+
+        # Check reference ET parameters
+        if etr_factor and not utils.is_number(etr_factor):
+            raise ValueError('etr_factor must be a number')
+        if etr_factor and self.etr_factor < 0:
+            raise ValueError('etr_factor must be greater than zero')
+        etr_resample_methods = ['nearest', 'bilinear', 'bicubic']
+        if etr_resample and etr_resample.lower() not in etr_resample_methods:
+            raise ValueError('unsupported etr_resample method')
 
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
@@ -201,17 +216,20 @@ class Image():
             etr_img = ee.Image.constant(self.etr_source)
         elif type(self.etr_source) is str:
             # Assume a string source is an image collection ID (not an image ID)
-            etr_img = ee.Image(
-                ee.ImageCollection(self.etr_source)\
-                    .filterDate(self._start_date, self._end_date)\
-                    .select([self.etr_band])\
-                    .first())
+            etr_coll = ee.ImageCollection(self.etr_source)\
+                .filterDate(self._start_date, self._end_date)\
+                .select([self.etr_band])
+            etr_img = ee.Image(etr_coll.first())
+            if self.etr_resample in ['bilinear', 'bicubic']:
+                etr_img = etr_img.resample(self.etr_resample)
         else:
             raise ValueError('unsupported etr_source: {}'.format(
                 self.etr_source))
 
+        if self.etr_factor:
+            etr_img = etr_img.multiply(self.etr_factor)
+
         return self.ndvi.multiply(0).add(etr_img)\
-            .multiply(self.etr_factor)\
             .rename(['etr']).set(self._properties)
 
     @lazy_property
