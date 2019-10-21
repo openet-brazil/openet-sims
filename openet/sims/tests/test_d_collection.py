@@ -479,37 +479,6 @@ def test_Collection_interpolate_output_type_default():
     assert(output[bands['count']]['data_type']['precision'] == 'int')
 
 
-@pytest.mark.parametrize(
-    'output_type, precision, max_value',
-    [
-        ['int8', 'int', 127],
-        ['uint8', 'int', 255],
-        ['int16', 'int', 32767],
-        ['uint16', 'int', 65535],
-        ['float', 'float', None],
-        ['double', 'double', None],
-    ]
-)
-def test_Collection_interpolate_output_type_parameter(output_type, precision, max_value):
-    """Test if changing the output_type parameter works"""
-    output = utils.getinfo(default_coll_obj().interpolate(output_type=output_type))
-    output = output['features'][0]['bands']
-    bands = {info['id']: i for i, info in enumerate(output)}
-
-    assert(output[bands['et']]['data_type']['precision'] == precision)
-    assert(output[bands['etr']]['data_type']['precision'] == precision)
-
-    if max_value is not None:
-        assert(output[bands['et']]['data_type']['max'] == max_value)
-        assert(output[bands['etr']]['data_type']['max'] == max_value)
-
-
-def test_Collection_interpolate_output_type_exception():
-    """Test if Exception is raised for an invalid interp_method parameter"""
-    with pytest.raises(ValueError):
-        utils.getinfo(default_coll_obj().interpolate(output_type='DEADBEEF'))
-
-
 def test_Collection_interpolate_custom_model_args():
     """Test passing in a model specific parameter through model_args"""
     model_args = {'crop_type_source': 'projects/openet/crop_type'}
