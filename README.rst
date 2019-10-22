@@ -43,9 +43,9 @@ end_date
 geometry
     ee.Geometry() that is passed to the collection .filterBounds() calls.
     All images with a footprint that intersects the geometry will be included.
-etr_source
+et_reference_source
     Reference ET source collection ID.
-etr_band
+et_reference_band
     Reference ET source band name.
 
 Optional Inputs
@@ -96,18 +96,19 @@ Collection Examples
             start_date='2017-06-01',
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
-            etr_source='IDAHO_EPSCOR/GRIDMET',
-            etr_band='etr') \
-        .overpass(variables=['et', 'etr', 'etf'])
+            et_reference_source='IDAHO_EPSCOR/GRIDMET',
+            et_reference_band='etr') \
+        .overpass(variables=['et', 'et_reference', 'et_fraction'])
 
     monthly_coll = model.Collection(
             collections=['LANDSAT/LC08/C01/T1_SR'],
             start_date='2017-06-01',
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
-            etr_source='IDAHO_EPSCOR/GRIDMET',
-            etr_band='etr') \
-        .interpolate(variables=['et', 'etr', 'etf'] t_interval='monthly')
+            et_reference_source='IDAHO_EPSCOR/GRIDMET',
+            et_reference_band='etr') \
+        .interpolate(variables=['et', 'et_reference', 'et_fraction']
+                     t_interval='monthly')
 
 Image
 =====
@@ -152,9 +153,9 @@ Image Example
 .. code-block:: python
 
     import openet.sims as model
-    landsat_img = ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716')
     et_img = model.Image.from_landsat_c1_sr(
-        landsat_img, etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr).et
+        ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'),
+        etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr').et
 
 Variables
 =========
@@ -163,10 +164,10 @@ The SIMS model can compute the following variables:
 
 ndvi
    Normalized difference vegetation index [unitless]
-etf
+et_fraction
    Fraction of reference ET [unitless]
-etr
-   Reference ET (alfalfa) [mm]
+et_reference
+   Reference ET (grass) [mm]
 et
    Actual ET [mm]
 
@@ -175,7 +176,7 @@ There is also a more general "calculate" method that can be used to return a mul
 Reference ET
 ============
 
-The reference ET data source is controlled using the "etr_source" and "etr_band" parameters.
+The reference ET data source is controlled using the "et_reference_source" and "et_reference_band" parameters.
 
 The model is expecting a grass reference ET (ETo) and will not return valid results if an alfalfa reference ET (ETr) is used.
 
@@ -185,12 +186,10 @@ Reference ET Sources
 GRIDMET
   | Collection ID: IDAHO_EPSCOR/GRIDMET
   | http://www.climatologylab.org/gridmet.html
-  | Alfalfa reference ET band: etr
   | Grass reference ET band: eto
 Spatial CIMIS
   | Collection ID: projects/openet/cimis/daily
   | https://cimis.water.ca.gov/SpatialData.aspx
-  | Alfalfa reference ET band: ETr_ASCE
   | Grass reference ET band: ETo_ASCE
 
 Example Notebooks

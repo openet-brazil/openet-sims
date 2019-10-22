@@ -43,10 +43,10 @@ class Image():
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
-            etr_source=None,
-            etr_band=None,
-            etr_factor=None,
-            etr_resample=None,
+            et_reference_source=None,
+            et_reference_band=None,
+            et_reference_factor=None,
+            et_reference_resample=None,
             mask_non_ag_flag=False,
             water_kc_flag=True,
         ):
@@ -67,16 +67,16 @@ class Image():
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients.
             The default is False.
-        etr_source : str, float, optional
+        et_reference_source : str, float, optional
             Reference ET source (the default is None).
-            Parameter is required if computing 'et' or 'etr'.
-        etr_band : str, optional
+            Parameter is required if computing 'et' or 'et_reference'.
+        et_reference_band : str, optional
             Reference ET band name (the default is None).
-            Parameter is required if computing 'et' or 'etr'.
-        etr_factor : float, None, optional
+            Parameter is required if computing 'et' or 'et_reference'.
+        et_reference_factor : float, None, optional
             Reference ET scaling factor.  The default is None which is
             equivalent to 1.0 (or no scaling).
-        etr_resample : {'nearest', 'bilinear', 'bicubic', None}, optional
+        et_reference_resample : {'nearest', 'bilinear', 'bicubic', None}, optional
             Reference ET resampling.  The default is None which is equivalent
             to nearest neighbor resampling.
         mask_non_ag_flag : bool, optional
@@ -118,19 +118,20 @@ class Image():
         self._doy = self._date.getRelative('day', 'year').add(1).int()
 
         # Reference ET parameters
-        self.etr_source = etr_source
-        self.etr_band = etr_band
-        self.etr_factor = etr_factor
-        self.etr_resample = etr_resample
+        self.et_reference_source = et_reference_source
+        self.et_reference_band = et_reference_band
+        self.et_reference_factor = et_reference_factor
+        self.et_reference_resample = et_reference_resample
 
         # Check reference ET parameters
-        if etr_factor and not utils.is_number(etr_factor):
-            raise ValueError('etr_factor must be a number')
-        if etr_factor and self.etr_factor < 0:
-            raise ValueError('etr_factor must be greater than zero')
-        etr_resample_methods = ['nearest', 'bilinear', 'bicubic']
-        if etr_resample and etr_resample.lower() not in etr_resample_methods:
-            raise ValueError('unsupported etr_resample method')
+        if et_reference_factor and not utils.is_number(et_reference_factor):
+            raise ValueError('et_reference_factor must be a number')
+        if et_reference_factor and self.et_reference_factor < 0:
+            raise ValueError('et_reference_factor must be greater than zero')
+        et_reference_resample_methods = ['nearest', 'bilinear', 'bicubic']
+        if (et_reference_resample and \
+                et_reference_resample.lower() not in et_reference_resample_methods):
+            raise ValueError('unsupported et_reference_resample method')
 
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
@@ -159,10 +160,10 @@ class Image():
         for v in variables:
             if v.lower() == 'et':
                 output_images.append(self.et.float())
-            elif v.lower() == 'etr':
-                output_images.append(self.etr.float())
-            elif v.lower() == 'etf':
-                output_images.append(self.etf.float())
+            elif v.lower() == 'et_reference':
+                output_images.append(self.et_reference.float())
+            elif v.lower() == 'et_fraction':
+                output_images.append(self.et_fraction.float())
             # elif v.lower() == 'crop_class':
             #     output_images.append(self.crop_class)
             # elif v.lower() == 'crop_type':
@@ -183,7 +184,7 @@ class Image():
         return ee.Image(output_images).set(self._properties)
 
     @lazy_property
-    def etf(self):
+    def et_fraction(self):
         """Fraction of reference ET (equivalent to the Kc)
 
         This method is basically identical to the "kc" method and is only
@@ -195,13 +196,13 @@ class Image():
         ee.Image
 
         """
-        return self.kc.rename(['etf']).set(self._properties)
-        # ETf could also be calculated from ET and ETr
-        # return self.et.divide(self.etr)\
-        #     .rename(['etf']).set(self._properties)
+        return self.kc.rename(['et_fraction']).set(self._properties)
+        # ET fraction could also be calculated from ET and ET reference
+        # return self.et.divide(self.et_reference)\
+        #     .rename(['et_fraction']).set(self._properties)
 
     @lazy_property
-    def etr(self):
+    def et_reference(self):
         """Reference ET for the image date
 
         Returns
@@ -209,28 +210,28 @@ class Image():
         ee.Image
 
         """
-        if utils.is_number(self.etr_source):
+        if utils.is_number(self.et_reference_source):
             # Interpret numbers as constant images
             # CGM - Should we use the ee_types here instead?
-            #   i.e. ee.ee_types.isNumber(self.etr_source)
-            etr_img = ee.Image.constant(self.etr_source)
-        elif type(self.etr_source) is str:
+            #   i.e. ee.ee_types.isNumber(self.et_reference_source)
+            et_reference_img = ee.Image.constant(self.et_reference_source)
+        elif type(self.et_reference_source) is str:
             # Assume a string source is an image collection ID (not an image ID)
-            etr_coll = ee.ImageCollection(self.etr_source)\
-                .filterDate(self._start_date, self._end_date)\
-                .select([self.etr_band])
-            etr_img = ee.Image(etr_coll.first())
-            if self.etr_resample in ['bilinear', 'bicubic']:
-                etr_img = etr_img.resample(self.etr_resample)
+            et_reference_coll = ee.ImageCollection(self.et_reference_source) \
+                .filterDate(self._start_date, self._end_date) \
+                .select([self.et_reference_band])
+            et_reference_img = ee.Image(et_reference_coll.first())
+            if self.et_reference_resample in ['bilinear', 'bicubic']:
+                et_reference_img = et_reference_img.resample(self.et_reference_resample)
         else:
-            raise ValueError('unsupported etr_source: {}'.format(
-                self.etr_source))
+            raise ValueError('unsupported et_reference_source: {}'.format(
+                self.et_reference_source))
 
-        if self.etr_factor:
-            etr_img = etr_img.multiply(self.etr_factor)
+        if self.et_reference_factor:
+            et_reference_img = et_reference_img.multiply(self.et_reference_factor)
 
-        return self.ndvi.multiply(0).add(etr_img)\
-            .rename(['etr']).set(self._properties)
+        return self.ndvi.multiply(0).add(et_reference_img) \
+            .rename(['et_reference']).set(self._properties)
 
     @lazy_property
     def et(self):
@@ -241,7 +242,7 @@ class Image():
         ee.Image
 
         """
-        return self.kc.multiply(self.etr)\
+        return self.kc.multiply(self.et_reference) \
             .rename(['et']).set(self._properties)
 
     @lazy_property
@@ -254,8 +255,8 @@ class Image():
 
         """
         # Map the the crop class values to the NDVI image
-        return self.ndvi.multiply(0)\
-            .add(self.model.crop_class)\
+        return self.ndvi.multiply(0) \
+            .add(self.model.crop_class) \
             .rename('crop_class').set(self._properties)
 
     @lazy_property
@@ -269,8 +270,8 @@ class Image():
         """
         # Map the the crop class values to the NDVI image
         # Crop type image ID property is set in model function
-        return self.ndvi.multiply(0)\
-            .add(self.model.crop_type)\
+        return self.ndvi.multiply(0) \
+            .add(self.model.crop_type) \
             .rename(['crop_type'])
 
     @lazy_property
@@ -282,7 +283,7 @@ class Image():
         ee.Image
 
         """
-        return self.model.fc(self.ndvi)\
+        return self.model.fc(self.ndvi) \
             .rename(['fc']).set(self._properties)
 
     @lazy_property
@@ -294,7 +295,7 @@ class Image():
         ee.Image
 
         """
-        return self.model.kc(self.ndvi)\
+        return self.model.kc(self.ndvi) \
             .rename(['kc']).set(self._properties)
 
     @lazy_property
@@ -308,7 +309,7 @@ class Image():
         ee.Image
 
         """
-        return self.kc.multiply(0).add(1).updateMask(1)\
+        return self.kc.multiply(0).add(1).updateMask(1) \
             .rename(['mask']).set(self._properties).uint8()
 
     @lazy_property
