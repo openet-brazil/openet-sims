@@ -44,7 +44,7 @@ geometry
     ee.Geometry() that is passed to the collection .filterBounds() calls.
     All images with a footprint that intersects the geometry will be included.
 et_reference_source
-    Reference ET source collection ID.
+    Reference ET source collection ID  (see `Reference ET Sources`_).
 et_reference_band
     Reference ET source band name.
 
@@ -97,7 +97,7 @@ Collection Examples
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
             et_reference_source='IDAHO_EPSCOR/GRIDMET',
-            et_reference_band='etr') \
+            et_reference_band='eto') \
         .overpass(variables=['et', 'et_reference', 'et_fraction'])
 
     monthly_coll = model.Collection(
@@ -106,7 +106,7 @@ Collection Examples
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
             et_reference_source='IDAHO_EPSCOR/GRIDMET',
-            et_reference_band='etr') \
+            et_reference_band='eto') \
         .interpolate(variables=['et', 'et_reference', 'et_fraction']
                      t_interval='monthly')
 
@@ -155,7 +155,8 @@ Image Example
     import openet.sims as model
     et_img = model.Image.from_landsat_c1_sr(
         ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'),
-        etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr').et
+        et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr').et
 
 Variables
 =========
@@ -167,7 +168,7 @@ ndvi
 et_fraction
    Fraction of reference ET [unitless]
 et_reference
-   Reference ET (grass) [mm]
+   Reference ET [mm] (type will depend on `Reference ET`_ parameters)
 et
    Actual ET [mm]
 
