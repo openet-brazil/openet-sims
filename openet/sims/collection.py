@@ -21,7 +21,7 @@ from . import utils
 from .image import Image
 # Importing to get version number, is there a better way?
 import openet.sims
-import openet.core.interp as interp
+import openet.core.interpolate as interpolate
 # TODO: import utils from openet.core
 # import openet.core.utils as utils
 
@@ -444,7 +444,7 @@ class Collection():
         if 'et' in variables and 'et_fraction' not in interp_vars:
             interp_vars.append('et_fraction')
 
-        # With the current interp.daily() function,
+        # With the current interpolate.daily() function,
         #   something has to be interpolated in order to return et_reference
         if 'et_reference' in variables and 'et_fraction' not in interp_vars:
             interp_vars.append('et_fraction')
@@ -464,7 +464,7 @@ class Collection():
 
         # For count, compute the composite/mosaic image for the mask band only
         if 'count' in variables:
-            aggregate_coll = interp.aggregate_daily(
+            aggregate_coll = interpolate.aggregate_daily(
                 image_coll=scene_coll.select(['mask']),
                 start_date=start_date, end_date=end_date)
             # The following is needed because the aggregate collection can be
@@ -476,7 +476,7 @@ class Collection():
                 ee.Image.constant(0).rename(['mask'])
                     .set({'system:time_start': ee.Date(start_date).millis()}))
 
-        # Including count/mask causes problems in interp.daily() function.
+        # Including count/mask causes problems in interpolate.daily() function.
         # Issues with mask being an int but the values need to be double.
         # Casting the mask band to a double would fix this problem also.
         if 'mask' in interp_vars:
@@ -485,7 +485,7 @@ class Collection():
         # Interpolate to a daily time step
         # NOTE: the daily function is not computing ET (ETf x ETr)
         #   but is returning the target (ETr) band
-        daily_coll = interp.daily(
+        daily_coll = interpolate.daily(
             target_coll=daily_et_reference_coll,
             source_coll=scene_coll.select(interp_vars),
             interp_method=interp_method, interp_days=interp_days,
