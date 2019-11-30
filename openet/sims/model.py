@@ -220,7 +220,7 @@ class Model():
         if utils.is_number(self.crop_type_source):
             # Interpret numbers as constant images
             # CGM - Should we use the ee_types here instead?
-            #   i.e. ee.ee_types.isNumber(self.etr_source)
+            #   i.e. ee.ee_types.isNumber(self.et_reference_source)
             crop_type_img = ee.Image.constant(self.crop_type_source)
             #     .rename('crop_type')
             # properties = properties.set('id', 'constant')
@@ -252,7 +252,10 @@ class Model():
             properties = properties.set('id', crop_type_img.get('system:id'))
 
         elif (type(self.crop_type_source) is str and
-              self.crop_type_source.lower() == 'projects/openet/crop_type'):
+              self.crop_type_source.lower() in [
+                  'projects/openet/crop_type',
+                  'projects/openet/assets/crop_type',
+                  'projects/earthengine-legacy/assets/projects/openet/crop_type']):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
             year_min = ee.Number(2016)
