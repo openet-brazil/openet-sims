@@ -3,7 +3,7 @@ import pprint
 import ee
 import pytest
 
-import openet.sims.interpolate as interp
+import openet.sims.interpolate as interpolate
 import openet.sims.utils as utils
 
 

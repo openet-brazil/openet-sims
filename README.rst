@@ -156,7 +156,7 @@ Image Example
     et_img = model.Image.from_landsat_c1_sr(
         ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'),
         et_reference_source='IDAHO_EPSCOR/GRIDMET',
-        et_reference_band='etr').et
+        et_reference_band='eto').et
 
 Variables
 =========

@@ -21,7 +21,7 @@ from . import utils
 from .image import Image
 # Importing to get version number, is there a better way?
 import openet.sims
-import openet.core.interpolate as interpolate
+import openet.core.interpolate
 # TODO: import utils from openet.core
 # import openet.core.utils as utils
 
@@ -464,7 +464,7 @@ class Collection():
 
         # For count, compute the composite/mosaic image for the mask band only
         if 'count' in variables:
-            aggregate_coll = interpolate.aggregate_daily(
+            aggregate_coll = openet.core.interpolate.aggregate_daily(
                 image_coll=scene_coll.select(['mask']),
                 start_date=start_date, end_date=end_date)
             # The following is needed because the aggregate collection can be
@@ -485,7 +485,7 @@ class Collection():
         # Interpolate to a daily time step
         # NOTE: the daily function is not computing ET (ETf x ETr)
         #   but is returning the target (ETr) band
-        daily_coll = interpolate.daily(
+        daily_coll = openet.core.interpolate.daily(
             target_coll=daily_et_reference_coll,
             source_coll=scene_coll.select(interp_vars),
             interp_method=interp_method, interp_days=interp_days,
