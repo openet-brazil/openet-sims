@@ -257,9 +257,14 @@ def test_Collection_interpolate_default():
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
 
 
-def test_Collection_interpolate_variables_custom():
+def test_Collection_interpolate_variables_custom_et():
     output = utils.getinfo(default_coll_obj().interpolate(variables=['et']))
     assert {y['id'] for x in output['features'] for y in x['bands']} == {'et'}
+
+
+def test_Collection_interpolate_variables_custom_ndvi():
+    output = utils.getinfo(default_coll_obj().interpolate(variables=['ndvi']))
+    assert {y['id'] for x in output['features'] for y in x['bands']} == {'ndvi'}
 
 
 def test_Collection_interpolate_t_interval_daily():

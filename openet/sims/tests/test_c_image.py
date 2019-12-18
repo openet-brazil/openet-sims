@@ -39,8 +39,10 @@ def default_image(ndvi=0.8):
 
 # Setting et_reference_source and et_reference_band on the default image to
 # simplify testing but these do not have defaults in the Image class init
-def default_image_args(ndvi=0.8, et_reference_source='IDAHO_EPSCOR/GRIDMET',
-                       et_reference_band='etr', et_reference_factor=0.85,
+def default_image_args(ndvi=0.8,
+                       et_reference_source='IDAHO_EPSCOR/GRIDMET',
+                       et_reference_band='etr',
+                       et_reference_factor=0.85,
                        et_reference_resample='nearest',
                        crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                        crop_type_kc_flag=False, mask_non_ag_flag=False):
@@ -57,8 +59,10 @@ def default_image_args(ndvi=0.8, et_reference_source='IDAHO_EPSCOR/GRIDMET',
     }
 
 
-def default_image_obj(ndvi=0.8, et_reference_source='IDAHO_EPSCOR/GRIDMET',
-                      et_reference_band='etr', et_reference_factor=0.85,
+def default_image_obj(ndvi=0.8,
+                      et_reference_source='IDAHO_EPSCOR/GRIDMET',
+                      et_reference_band='etr',
+                      et_reference_factor=0.85,
                       et_reference_resample='nearest',
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                       crop_type_kc_flag=False, mask_non_ag_flag=False):

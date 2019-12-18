@@ -187,14 +187,14 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
 
     # Compute ET from ETf and ETr (if necessary)
     # The check for et_fraction is needed since it is back computed from ET and ETr
-    # if 'et' in variables or 'et_fraction' in variables:
-    def compute_et(img):
-        """This function assumes ETr and ETf are present"""
-        et_img = img.select(['et_fraction']).multiply(
-            img.select(['et_reference']))
-        return img.addBands(et_img.double().rename('et'))
+    if 'et' in variables or 'et_fraction' in variables:
+        def compute_et(img):
+            """This function assumes ETr and ETf are present"""
+            et_img = img.select(['et_fraction']).multiply(
+                img.select(['et_reference']))
+            return img.addBands(et_img.double().rename('et'))
 
-    daily_coll = daily_coll.map(compute_et)
+        daily_coll = daily_coll.map(compute_et)
 
     def aggregate_image(agg_start_date, agg_end_date, date_format):
         """Aggregate the daily images within the target date range
@@ -218,23 +218,26 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         for each time interval by separate mappable functions
 
         """
-        # if 'et' in variables or 'et_fraction' in variables:
-        et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-            .select(['et']).sum()
-        # if 'et_reference' in variables or 'et_fraction' in variables:
-        et_reference_img = daily_coll.filterDate(agg_start_date,
-                                                 agg_end_date) \
-            .select(['et_reference']).sum()
+        if 'et' in variables or 'et_fraction' in variables:
+            et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
+                .select(['et']).sum()
+
+        if 'et_reference' in variables or 'et_fraction' in variables:
+            et_reference_img = daily_coll\
+                .filterDate(agg_start_date, agg_end_date) \
+                .select(['et_reference']).sum()
 
         if et_reference_factor:
-            et_img = et_img.multiply(et_reference_factor)
-            et_reference_img = et_reference_img.multiply(
-                et_reference_factor)
+            if 'et' in variables or 'et_fraction' in variables:
+                et_img = et_img.multiply(et_reference_factor)
+            if 'et_reference' in variables or 'et_fraction' in variables:
+                et_reference_img = et_reference_img.multiply(et_reference_factor)
 
         # DEADBEEF - This doesn't seem to be doing anything
-        if et_reference_resample in ['bilinear', 'bicubic']:
-            et_reference_img = et_reference_img.resample(
-                et_reference_resample)
+        if (et_reference_resample in ['bilinear', 'bicubic'] and
+                ('et_reference' in variables or 'et_fraction' in variables)):
+            et_reference_img = et_reference_img\
+                .resample(et_reference_resample)
 
         image_list = []
         if 'et' in variables:

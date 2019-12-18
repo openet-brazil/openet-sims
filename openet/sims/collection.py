@@ -492,16 +492,14 @@ class Collection():
         )
 
         # Compute ET from ET fraction and reference ET (if necessary)
-        # if 'et' in variables or 'et_fraction' in variables:
-        def compute_et(img):
-            """This function assumes et_reference and et_fraction are present"""
-
-            # TODO: Should ETr be mapped to the et_fraction band here?
-
-            et_img = img.select(['et_fraction']) \
-                .multiply(img.select(['et_reference']))
-            return img.addBands(et_img.rename('et'))
-        daily_coll = daily_coll.map(compute_et)
+        if 'et' in variables or 'et_fraction' in variables:
+            def compute_et(img):
+                """This function assumes et_reference and et_fraction are present"""
+                # TODO: Should ETr be mapped to the et_fraction band here?
+                et_img = img.select(['et_fraction']) \
+                    .multiply(img.select(['et_reference']))
+                return img.addBands(et_img.rename('et'))
+            daily_coll = daily_coll.map(compute_et)
 
         interp_properties = {
             'cloud_cover_max': self.cloud_cover_max,
@@ -535,22 +533,30 @@ class Collection():
             for each time interval by separate mappable functions
 
             """
-            # if 'et' in variables or 'et_fraction' in variables:
-            et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                .select(['et']).sum()
-            # if 'et_reference' in variables or 'et_fraction' in variables:
-            et_reference_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
-                .select(['et_reference']).sum()
+            # et_img = None
+            # et_reference_img = None
+
+            if 'et' in variables or 'et_fraction' in variables:
+                et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
+                    .select(['et']).sum()
+
+            if 'et_reference' in variables or 'et_fraction' in variables:
+                et_reference_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
+                    .select(['et_reference']).sum()
 
             if self.model_args['et_reference_factor']:
-                et_img = et_img.multiply(self.model_args['et_reference_factor'])
-                et_reference_img = et_reference_img.multiply(
-                    self.model_args['et_reference_factor'])
+                if 'et' in variables or 'et_fraction' in variables:
+                    et_img = et_img\
+                        .multiply(self.model_args['et_reference_factor'])
+                if 'et_reference' in variables or 'et_fraction' in variables:
+                    et_reference_img = et_reference_img\
+                        .multiply(self.model_args['et_reference_factor'])
 
             # DEADBEEF - This doesn't seem to be doing anything
-            if self.et_reference_resample in ['bilinear', 'bicubic']:
-                print('collection interpolate aggregate bilinear')
-                et_reference_img = et_reference_img.resample(self.model_args['et_reference_resample'])
+            if (self.et_reference_resample in ['bilinear', 'bicubic'] and
+                    ('et_reference' in variables or 'et_fraction' in variables)):
+                et_reference_img = et_reference_img\
+                    .resample(self.model_args['et_reference_resample'])
             # Will mapping ETr to the ET band trigger the resample?
             # et_reference_img = et_img.multiply(0).add(et_reference_img)
 
