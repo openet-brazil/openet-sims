@@ -236,9 +236,9 @@ References
 
 
 
-.. |build| image:: https://travis-ci.org/Open-ET/openet-sims-beta.svg?branch=master
+.. |build| image:: https://github.com/Open-ET/openet-ptjpl-beta/workflows/build/badge.svg
    :alt: Build status
-   :target: https://travis-ci.org/Open-ET/openet-sims-beta
+   :target: https://github.com/Open-ET/openet-ptjpl-beta
 .. |version| image:: https://badge.fury.io/py/openet-sims.svg
    :alt: Latest version on PyPI
    :target: https://badge.fury.io/py/openet-sims
