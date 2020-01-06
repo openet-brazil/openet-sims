@@ -11,6 +11,7 @@
 # notes           :
 # python_version  : 3.2
 
+import copy
 import datetime
 import pprint
 
@@ -264,7 +265,7 @@ class Collection():
                 # TODO: Need to come up with a system for applying
                 #   generic filter arguments to the collections
                 if coll_id in self.filter_args.keys():
-                    for f in self.filter_args[coll_id]:
+                    for f in copy.deepcopy(self.filter_args[coll_id]):
                         try:
                             filter_type = f.pop('type')
                         except KeyError:

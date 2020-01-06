@@ -25,7 +25,8 @@ default_coll_args = {
     'variables': list(VARIABLES), 'cloud_cover_max': 70,
     'et_reference_source': 'IDAHO_EPSCOR/GRIDMET', 'et_reference_band': 'etr',
     'et_reference_factor': 0.85, 'et_reference_resample': 'nearest',
-    'model_args': {}, 'filter_args': {},
+    'model_args': {},
+    'filter_args': {},
 }
 
 def default_coll_obj(**kwargs):
@@ -202,12 +203,15 @@ def test_Collection_build_cloud_cover():
 
 
 def test_Collection_build_filter_args():
+    # Need to test with two collections to catch bug when deepcopy isn't used
+    collections = ['LANDSAT/LC08/C01/T1_SR', 'LANDSAT/LE07/C01/T1_SR']
+    wrs2_filter = [
+        {'type': 'equals', 'leftField': 'WRS_PATH', 'rightValue': 44},
+        {'type': 'equals', 'leftField': 'WRS_ROW', 'rightValue': 33}]
     coll_obj = default_coll_obj(
-        collections=['LANDSAT/LC08/C01/T1_SR'],
+        collections=collections,
         geometry=ee.Geometry.Rectangle(-125, 35, -120, 40),
-        filter_args={'LANDSAT/LC08/C01/T1_SR': [
-            {'type': 'equals', 'leftField': 'WRS_PATH', 'rightValue': 44},
-            {'type': 'equals', 'leftField': 'WRS_ROW', 'rightValue': 33}]})
+        filter_args={c: wrs2_filter for c in collections})
     output = utils.getinfo(coll_obj._build(variables=['et']))
     assert {x[5:11] for x in parse_scene_id(output)} == {'044033'}
 
