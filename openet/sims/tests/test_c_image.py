@@ -37,18 +37,21 @@ def default_image(ndvi=0.8):
         })
 
 
-# Setting etr_source and etr_band on the default image to simplify testing
-#   but these do not have defaults in the Image class init
-def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
-                       etr_band='etr', etr_factor=0.85, etr_resample='nearest',
+# Setting et_reference_source and et_reference_band on the default image to
+# simplify testing but these do not have defaults in the Image class init
+def default_image_args(ndvi=0.8,
+                       et_reference_source='IDAHO_EPSCOR/GRIDMET',
+                       et_reference_band='etr',
+                       et_reference_factor=0.85,
+                       et_reference_resample='nearest',
                        crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                        crop_type_kc_flag=False, mask_non_ag_flag=False):
     return {
         'image': default_image(ndvi=ndvi),
-        'etr_source': etr_source,
-        'etr_band': etr_band,
-        'etr_factor': etr_factor,
-        'etr_resample': etr_resample,
+        'et_reference_source': et_reference_source,
+        'et_reference_band': et_reference_band,
+        'et_reference_factor': et_reference_factor,
+        'et_reference_resample': et_reference_resample,
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
@@ -56,24 +59,32 @@ def default_image_args(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
     }
 
 
-def default_image_obj(ndvi=0.8, etr_source='IDAHO_EPSCOR/GRIDMET',
-                      etr_band='etr', etr_factor=0.85, etr_resample='nearest',
+def default_image_obj(ndvi=0.8,
+                      et_reference_source='IDAHO_EPSCOR/GRIDMET',
+                      et_reference_band='etr',
+                      et_reference_factor=0.85,
+                      et_reference_resample='nearest',
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
                       crop_type_kc_flag=False, mask_non_ag_flag=False):
     return sims.Image(**default_image_args(
-        ndvi=ndvi, etr_source=etr_source, etr_band=etr_band,
-        etr_factor=etr_factor, etr_resample=etr_resample,
-        crop_type_source=crop_type_source, crop_type_remap=crop_type_remap,
-        crop_type_kc_flag=crop_type_kc_flag, mask_non_ag_flag=mask_non_ag_flag,
+        ndvi=ndvi,
+        et_reference_source=et_reference_source,
+        et_reference_band=et_reference_band,
+        et_reference_factor=et_reference_factor,
+        et_reference_resample=et_reference_resample,
+        crop_type_source=crop_type_source,
+        crop_type_remap=crop_type_remap,
+        crop_type_kc_flag=crop_type_kc_flag,
+        mask_non_ag_flag=mask_non_ag_flag,
     ))
 
 
 def test_Image_init_default_parameters():
     m = sims.Image(image=default_image())
-    assert m.etr_source == None
-    assert m.etr_band == None
-    assert m.etr_factor == None
-    assert m.etr_resample == None
+    assert m.et_reference_source == None
+    assert m.et_reference_band == None
+    assert m.et_reference_factor == None
+    assert m.et_reference_resample == None
     # assert m.crop_type_source == 'USDA/NASS/CDL'
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
@@ -210,48 +221,49 @@ def test_Image_kc_properties():
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
-def test_Image_etf_properties():
-    """Test if properties are set on the ETf image"""
-    output = utils.getinfo(default_image_obj().etf)
-    assert output['bands'][0]['id'] == 'etf'
+def test_Image_et_fraction_properties():
+    """Test if properties are set on the ET fraction image"""
+    output = utils.getinfo(default_image_obj().et_fraction)
+    assert output['bands'][0]['id'] == 'et_fraction'
     assert output['properties']['system:index'] == SCENE_ID
     assert output['properties']['system:time_start'] == SCENE_TIME
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
-def test_Image_etf_constant_value():
-    # ETf method returns Kc
+def test_Image_et_fraction_constant_value():
+    # ET fraction method returns Kc
     output = utils.constant_image_value(default_image_obj(
-        ndvi=0.8, crop_type_source=1).etf)
-    assert abs(output['etf'] - 0.9859994736) <= 0.0001
+        ndvi=0.8, crop_type_source=1).et_fraction)
+    assert abs(output['et_fraction'] - 0.9859994736) <= 0.0001
 
 
-def test_Image_etr_constant_value(etr=10.0, tol=0.0001):
+def test_Image_et_reference_constant_value(et_reference=10.0, tol=0.0001):
     output = utils.constant_image_value(default_image_obj(
-        etr_source=etr, etr_factor=0.85).etr)
-    assert abs(output['etr'] - etr * 0.85) <= tol
+        et_reference_source=et_reference,
+        et_reference_factor=0.85).et_reference)
+    assert abs(output['et_reference'] - et_reference * 0.85) <= tol
 
 
-def test_Image_etr_properties():
-    """Test if properties are set on the ETr image"""
-    output = utils.getinfo(default_image_obj().etr)
-    assert output['bands'][0]['id'] == 'etr'
+def test_Image_et_reference_properties():
+    """Test if properties are set on the reference ET image"""
+    output = utils.getinfo(default_image_obj().et_reference)
+    assert output['bands'][0]['id'] == 'et_reference'
     assert output['properties']['system:index'] == SCENE_ID
     assert output['properties']['system:time_start'] == SCENE_TIME
     assert output['properties']['image_id'] == COLL_ID + SCENE_ID
 
 
-def test_Image_etr_source_exception():
+def test_Image_et_reference_source_exception():
     """Test that an Exception is raise for an invalid image ID"""
     with pytest.raises(Exception):
-        utils.getinfo(default_image_obj(etr_source=None).etr)
+        utils.getinfo(default_image_obj(et_reference_source=None).et_reference)
 
 
 # CGM - I'm not sure why this is commented out
-# def test_Image_etr_band_exception():
-#     """Test that an Exception is raise for an invalid etr band name"""
+# def test_Image_et_reference_band_exception():
+#     """Test that an Exception is raise for an invalid et_reference band name"""
 #     with pytest.raises(Exception):
-#         utils.getinfo(default_image_obj(etr_band=None).etr)
+#         utils.getinfo(default_image_obj(et_reference_band=None).et_reference)
 
 
 def test_Image_et_properties():
@@ -265,7 +277,7 @@ def test_Image_et_properties():
 
 def test_Image_et_constant_value():
     output = utils.constant_image_value(default_image_obj(
-        etr_source=10, etr_factor=1.0, crop_type_source=1).et)
+        et_reference_source=10, et_reference_factor=1.0, crop_type_source=1).et)
     assert abs(output['et'] - 10 * 0.986) <= 0.0001
 
 
@@ -311,8 +323,8 @@ def test_Image_calculate_variables_custom():
 
 
 def test_Image_calculate_variables_all():
-    variables = ['et', 'etf', 'etr', 'fc', 'kc', 'mask', 'ndvi', 'time']
-    # variables = ['et', 'etr', 'fc', 'kc', 'crop_type', 'mask', 'ndvi', 'time']
+    variables = ['et', 'et_fraction', 'et_reference', 'fc', 'kc', 'mask',
+                 'ndvi', 'time']
     output = utils.getinfo(default_image_obj().calculate(variables=variables))
     assert set([x['id'] for x in output['bands']]) == set(variables)
 
@@ -347,7 +359,7 @@ def test_Image_from_landsat_c1_sr_image():
 
 
 def test_Image_from_landsat_c1_sr_kc():
-    """Test if ETf can be built from a Landsat images"""
+    """Test if ET fraction can be built from a Landsat images"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c1_sr(image_id).kc)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
@@ -357,7 +369,8 @@ def test_Image_from_landsat_c1_sr_et():
     """Test if ET can be built from a Landsat images"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c1_sr(
-        image_id, etr_source='IDAHO_EPSCOR/GRIDMET', etr_band='etr').et)
+        image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr').et)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
@@ -384,4 +397,4 @@ def test_Image_from_method_kwargs():
     """Test that the init parameters can be passed through the helper methods"""
     assert sims.Image.from_landsat_c1_sr(
         'LANDSAT/LC08/C01/T1_SR/LC08_042035_20150713',
-        etr_band='FOO').etr_band == 'FOO'
+        et_reference_band='FOO').et_reference_band == 'FOO'
