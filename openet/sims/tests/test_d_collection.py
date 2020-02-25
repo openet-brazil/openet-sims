@@ -60,7 +60,7 @@ def test_Collection_init_default_parameters():
     assert m.cloud_cover_max == 70
     assert m.model_args == {}
     assert m.filter_args == {}
-    assert m._interp_vars == ['ndvi', 'et_fraction']
+    assert set(m._interp_vars) == {'ndvi', 'et_fraction'}
 
 
 def test_Collection_init_collection_str(coll_id='LANDSAT/LC08/C01/T1_SR'):
@@ -365,11 +365,11 @@ def test_Collection_interpolate_et_reference_params_kwargs():
     """Test setting et_reference parameters in the Collection init args"""
     output = utils.getinfo(default_coll_obj(
         et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='etr',
-        et_reference_factor=0.5, et_reference_resample='bilinear',
+        et_reference_factor=0.5, et_reference_resample='bicubic',
         model_args={}).interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
-    assert output['features'][0]['properties']['et_reference_resample'] == 'bilinear'
+    assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
 
 
 def test_Collection_interpolate_et_reference_params_model_args():
@@ -379,24 +379,24 @@ def test_Collection_interpolate_et_reference_params_model_args():
         et_reference_factor=None, et_reference_resample=None,
         model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                     'et_reference_band': 'etr', 'et_reference_factor': 0.5,
-                    'et_reference_resample': 'bilinear'}).interpolate())
+                    'et_reference_resample': 'bicubic'}).interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
-    assert output['features'][0]['properties']['et_reference_resample'] == 'bilinear'
+    assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
 
 
 def test_Collection_interpolate_et_reference_params_interpolate_args():
     """Test setting et_reference parameters in the interpolate call"""
     et_reference_args = {'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                          'et_reference_band': 'etr', 'et_reference_factor': 0.5,
-                         'et_reference_resample': 'bilinear'}
+                         'et_reference_resample': 'bicubic'}
     output = utils.getinfo(default_coll_obj(
         et_reference_source=None, et_reference_band=None,
         et_reference_factor=None, et_reference_resample=None,
         model_args={}).interpolate(**et_reference_args))
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
-    assert output['features'][0]['properties']['et_reference_resample'] == 'bilinear'
+    assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
 
 
 def test_Collection_interpolate_t_interval_exception():

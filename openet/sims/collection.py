@@ -465,7 +465,7 @@ class Collection():
 
         # For count, compute the composite/mosaic image for the mask band only
         if 'count' in variables:
-            aggregate_coll = openet.core.interpolate.aggregate_daily(
+            aggregate_coll = openet.core.interpolate.aggregate_to_daily(
                 image_coll=scene_coll.select(['mask']),
                 start_date=start_date, end_date=end_date)
             # The following is needed because the aggregate collection can be
@@ -651,12 +651,9 @@ class Collection():
         list
 
         """
-        # DEADBEEF - This doesn't return the extra images used for interpolation
-        #   and may not be that useful of a method
-        # CGM - Could the build function and Image class support returning
-        #   the system:index?
-        output = list(self._build(variables=['ndvi'])\
-            .aggregate_histogram('image_id').getInfo().keys())
-        return sorted(output)
+        # CGM - This doesn't return the extra images used for interpolation
+        return sorted(list(self._build(variables=['ndvi'])\
+            .aggregate_array('image_id').getInfo()))
+
         # Strip merge indices (this works for Landsat and Sentinel image IDs
         # return sorted(['_'.join(x.split('_')[-3:]) for x in output])
