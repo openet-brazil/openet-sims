@@ -363,13 +363,17 @@ class Image():
         ValueError for an unsupported collection ID.
 
         """
-
-        # For SIMS, only support the surface reflectance collections
         collection_methods = {
             'LANDSAT/LC08/C01/T1_SR': 'from_landsat_c1_sr',
             'LANDSAT/LE07/C01/T1_SR': 'from_landsat_c1_sr',
             'LANDSAT/LT05/C01/T1_SR': 'from_landsat_c1_sr',
             'LANDSAT/LT04/C01/T1_SR': 'from_landsat_c1_sr',
+            'LANDSAT/LC08/C01/T1_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LE07/C01/T1_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LT05/C01/T1_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LT04/C01/T1_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LC08/C01/T1_RT_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LE07/C01/T1_RT_TOA': 'from_landsat_c1_toa',
         }
 
         try:
@@ -411,10 +415,11 @@ class Image():
             'LANDSAT_7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'pixel_qa'],
             'LANDSAT_8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'pixel_qa'],
         })
-        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'lst',
+        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
                         'pixel_qa']
-        prep_image = sr_image.select(input_bands.get(spacecraft_id),
-                                     output_bands)
+        prep_image = sr_image\
+            .select(input_bands.get(spacecraft_id), output_bands)\
+            .multiply([0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.1, 1])
 
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
@@ -429,6 +434,57 @@ class Image():
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),
                 'system:id': sr_image.get('system:id'),
+            })
+
+        return cls(input_image, **kwargs)
+
+    @classmethod
+    def from_landsat_c1_toa(cls, toa_image, **kwargs):
+        """Construct a SIMS Image instance from a Landsat TOA image
+
+        Parameters
+        ----------
+        toa_image : ee.Image, str
+            A raw Landsat Collection 1 TOA image or image ID.
+        kwargs : dict
+            Keyword arguments to pass through to model init.
+
+        Returns
+        -------
+        new instance of Image class
+
+        """
+        toa_image = ee.Image(toa_image)
+
+        # Use the SPACECRAFT_ID property identify each Landsat type
+        spacecraft_id = ee.String(toa_image.get('SPACECRAFT_ID'))
+
+        # Rename bands to generic names
+        input_bands = ee.Dictionary({
+            'LANDSAT_4': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'BQA'],
+            'LANDSAT_5': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'BQA'],
+            'LANDSAT_7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6_VCID_1',
+                          'BQA'],
+            'LANDSAT_8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'BQA'],
+        })
+        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
+                        'BQA']
+        prep_image = toa_image\
+            .select(input_bands.get(spacecraft_id), output_bands)
+
+        # Build the input image
+        # Eventually send the BQA band or a cloud mask through also
+        input_image = ee.Image([
+            cls._ndvi(prep_image)
+        ])
+
+        # Apply the cloud mask and add properties
+        input_image = input_image\
+            .updateMask(common.landsat_c1_toa_cloud_mask(toa_image))\
+            .set({
+                'system:index': toa_image.get('system:index'),
+                'system:time_start': toa_image.get('system:time_start'),
+                'system:id': toa_image.get('system:id'),
             })
 
         return cls(input_image, **kwargs)
