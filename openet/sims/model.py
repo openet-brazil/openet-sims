@@ -319,7 +319,7 @@ class Model():
         Parameters
         ----------
         ndvi : ee.Image
-            Normalized diffference vegetation index.
+            Normalized difference vegetation index.
 
         Returns
         -------
