@@ -49,6 +49,7 @@ class Image():
             et_reference_resample=None,
             mask_non_ag_flag=False,
             water_kc_flag=True,
+            reflectance_type='SR',
         ):
         """Earth Engine based SIMS image object
 
@@ -84,6 +85,8 @@ class Image():
             The default is False.
         water_kc_flag : bool, optional
             If True, set Kc for water pixels to 1.05.  The default is True.
+        reflectance_type : {'SR', 'TOA'}, optional
+            Used to select the fractional cover equation (the default is 'SR').
 
         Notes
         -----
@@ -133,6 +136,8 @@ class Image():
                 et_reference_resample.lower() not in et_reference_resample_methods):
             raise ValueError('unsupported et_reference_resample method')
 
+        self.reflectance_type = reflectance_type
+
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
         self.model = Model(
@@ -142,6 +147,7 @@ class Image():
             crop_type_kc_flag=crop_type_kc_flag,
             mask_non_ag_flag=mask_non_ag_flag,
             water_kc_flag=water_kc_flag,
+            reflectance_type=reflectance_type,
         )
 
     def calculate(self, variables=['et']):
@@ -436,7 +442,7 @@ class Image():
                 'system:id': sr_image.get('system:id'),
             })
 
-        return cls(input_image, **kwargs)
+        return cls(input_image, reflectance_type='SR', **kwargs)
 
     @classmethod
     def from_landsat_c1_toa(cls, toa_image, **kwargs):
@@ -487,7 +493,7 @@ class Image():
                 'system:id': toa_image.get('system:id'),
             })
 
-        return cls(input_image, **kwargs)
+        return cls(input_image, reflectance_type='TOA', **kwargs)
 
     @staticmethod
     def _ndvi(landsat_image):

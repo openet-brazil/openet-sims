@@ -19,7 +19,7 @@ DOY = 197
 def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
                        crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
                        crop_type_kc_flag=False, mask_non_ag_flag=False,
-                       water_kc_flag=True):
+                       water_kc_flag=True, reflectance_type='SR'):
     return {
         'year': year, 'doy': doy,
         'crop_type_source': crop_type_source,
@@ -27,13 +27,14 @@ def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
         'crop_type_kc_flag': crop_type_kc_flag,
         'mask_non_ag_flag': mask_non_ag_flag,
         'water_kc_flag': water_kc_flag,
+        'reflectance_type': reflectance_type,
     }
 
 
 def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
                       crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
                       crop_type_kc_flag=False, mask_non_ag_flag=False,
-                      water_kc_flag=True):
+                      water_kc_flag=True, reflectance_type='SR'):
     return model.Model(**default_model_args(
         year=ee.Number(year), doy=ee.Number(doy),
         crop_type_source=crop_type_source,
@@ -41,6 +42,7 @@ def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
         crop_type_kc_flag=crop_type_kc_flag,
         mask_non_ag_flag=mask_non_ag_flag,
         water_kc_flag=water_kc_flag,
+        reflectance_type=reflectance_type,
     ))
 
 
@@ -81,6 +83,7 @@ def test_Model_init_default_parameters():
     m = default_model_obj()
     assert m.crop_type_source == 'USDA/NASS/CDL/{}'.format(YEAR)
     assert m.crop_type_remap == 'CDL'
+    assert m.reflectance_type == 'SR'
 
 
 @pytest.mark.parametrize(
@@ -182,8 +185,8 @@ def test_Model_crop_class_constant_value(crop_type, expected):
     [
         [-0.2, 0.0],  # Clamped
         [-0.1, 0.0],  # Clamped
-        [0.0, 0.0],
-        [0.1, 0.0],
+        [0.0, 0.0],   # Clamped
+        [0.1, 0.0],   # Clamped
         [0.2, 0.072],
         [0.5, 0.45],
         [0.7, 0.702],
@@ -191,10 +194,38 @@ def test_Model_crop_class_constant_value(crop_type, expected):
         [0.95, 1.0],  # Clamped
     ]
 )
-def test_Model_fc(ndvi, expected, tol=0.0001):
-    output = utils.constant_image_value(default_model_obj().fc(
-        ndvi=ee.Image.constant(ndvi)))
+def test_Model_fc_reflectance_type_sr(ndvi, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(reflectance_type='SR').fc(
+            ndvi=ee.Image.constant(ndvi)))
     assert abs(output['fc'] - expected) <= tol
+
+
+@pytest.mark.parametrize(
+    'ndvi, expected',
+    [
+        [-0.2, 0.0],   # Clamped
+        [-0.1, 0.0],   # Clamped
+        [0.0, 0.0],    # Clamped
+        [0.1, 0.0075],
+        [0.2, 0.154],
+        [0.5, 0.5935],
+        [0.7, 0.8865],
+        [0.778, 1.0],  # Clamped
+        [0.95, 1.0],   # Clamped
+    ]
+)
+def test_Model_fc_reflectance_type_toa(ndvi, expected, tol=0.0001):
+    output = utils.constant_image_value(
+        default_model_obj(reflectance_type='TOA').fc(
+            ndvi=ee.Image.constant(ndvi)))
+    assert abs(output['fc'] - expected) <= tol
+
+
+def test_Model_fc_reflectance_type_exception():
+    with pytest.raises(Exception):
+        utils.getinfo(default_model_obj(reflectance_type='FOO').fc(
+            ndvi=ee.Image.constant(0.2)))
 
 
 @pytest.mark.parametrize(
