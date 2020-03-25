@@ -476,7 +476,8 @@ class Image():
         output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
                         'BQA']
         prep_image = toa_image\
-            .select(input_bands.get(spacecraft_id), output_bands)
+            .select(input_bands.get(spacecraft_id), output_bands)\
+            .set({'SATELLITE': spacecraft_id})
 
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
