@@ -34,6 +34,7 @@ class Model():
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             mask_non_ag_flag=False,
             water_kc_flag=True,
+            reflectance_type='SR',
         ):
         """Earth Engine based SIMS model object
 
@@ -56,6 +57,8 @@ class Model():
             The default is False.
         water_kc_flag : bool, optional
             If True, set Kc for water pixels to 1.05.  The default is True.
+        reflectance_type : {'SR', 'TOA'}, optional
+            Used to select the fractional cover equation (the default is 'SR').
 
         """
 
@@ -95,6 +98,13 @@ class Model():
             'ls_stop', self.crop_type, self.crop_data, 365)
         # setattr('h_max', crop_data_image(
         #     'h_max', self.crop_type, self.crop_data))
+
+        self.reflectance_type = reflectance_type
+        # TODO: Should type be checked (and exception raised) here or in fc()?
+        #   Being raised in fc() for now since it is not a lazy property
+        # if self.reflectance_type not in ['SR', 'TOA']:
+        #     raise ValueError(
+        #         f'unsupported reflectance type: {reflectance_type}')
 
     # CGM - It would be nice if kc and fc were lazy properties but then fc and
     #   ndvi would need to part of self (inherited from Image?).
@@ -181,14 +191,24 @@ class Model():
         -------
         ee.Image
 
+        Raises
+        ------
+        ValueError if reflectance type is not supported
+
         References
         ----------
 
 
         """
-        return ndvi.multiply(1.26).subtract(0.18)\
-            .clamp(0, 1)\
-            .rename(['fc'])
+        if self.reflectance_type == 'SR':
+            fc = ndvi.multiply(1.26).subtract(0.18)
+        elif self.reflectance_type == 'TOA':
+            fc = ndvi.multiply(1.465).subtract(0.139)
+        else:
+            raise ValueError(
+                f'Unsupported reflectance type: {self.reflectance_type}')
+
+        return fc.clamp(0, 1).rename(['fc'])
 
     def _crop_type(self):
         """Crop type
@@ -319,7 +339,7 @@ class Model():
         Parameters
         ----------
         ndvi : ee.Image
-            Normalized diffference vegetation index.
+            Normalized difference vegetation index.
 
         Returns
         -------

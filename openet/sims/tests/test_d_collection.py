@@ -162,14 +162,13 @@ def test_Collection_build_dates():
     assert parse_scene_id(output) == ['LC08_044033_20170716']
 
 
-# CGM - Non Landsat SR collections not currently supported
-# def test_Collection_build_landsat_toa():
-#     """Test if the Landsat TOA (non RT) collections can be built"""
-#     coll_obj = default_coll_obj(
-#         collections=['LANDSAT/LC08/C01/T1_TOA', 'LANDSAT/LE07/C01/T1_TOA'])
-#     output = utils.getinfo(coll_obj._build())
-#     assert parse_scene_id(output) == SCENE_ID_LIST
-#     assert VARIABLES == {y['id'] for x in output['features'] for y in x['bands']}
+def test_Collection_build_landsat_toa():
+    """Test if the Landsat TOA (non RT) collections can be built"""
+    coll_obj = default_coll_obj(
+        collections=['LANDSAT/LC08/C01/T1_TOA', 'LANDSAT/LE07/C01/T1_TOA'])
+    output = utils.getinfo(coll_obj._build())
+    assert parse_scene_id(output) == SCENE_ID_LIST
+    assert VARIABLES == {y['id'] for x in output['features'] for y in x['bands']}
 
 
 def test_Collection_build_landsat_sr():
