@@ -138,14 +138,14 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         logging.debug('et_reference_factor was not set, default to 1.0')
         # raise ValueError('et_reference_factor was not set')
 
-    # Get reference ET resample
-    if 'et_reference_resample' in model_args.keys():
-        et_reference_resample = model_args['et_reference_resample']
-    else:
-        et_reference_resample = 'nearest'
-        logging.debug(
-            'et_reference_resample was not set, default to nearest')
-        # raise ValueError('et_reference_resample was not set')
+    # CGM - Resampling is not working correctly so commenting out for now
+    # # Get reference ET resample
+    # if 'et_reference_resample' in model_args.keys():
+    #     et_reference_resample = model_args['et_reference_resample']
+    # else:
+    #     et_reference_resample = 'nearest'
+    #     logging.debug('et_reference_resample was not set, default to nearest')
+    #     # raise ValueError('et_reference_resample was not set')
 
     if type(et_reference_source) is str:
         # Assume a string source is an single image collection ID
@@ -155,12 +155,22 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
             .select([et_reference_band], ['et_reference'])
     # elif isinstance(et_reference_source, computedobject.ComputedObject):
     #     # Interpret computed objects as image collections
-    #     daily_et_ref_coll = ee.ImageCollection(et_reference_source)\
-    #         .select([et_reference_band])\
-    #         .filterDate(self.start_date, self.end_date)
+    #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
+    #         .filterDate(self.start_date, self.end_date) \
+    #         .select([et_reference_band])
     else:
         raise ValueError('unsupported et_reference_source: {}'.format(
             et_reference_source))
+
+    # Scale reference ET images (if necessary)
+    # CGM - Resampling is not working correctly so not including for now
+    if (et_reference_factor and et_reference_factor != 1):
+        def et_reference_adjust(input_img):
+            return input_img.multiply(et_reference_factor) \
+                .copyProperties(input_img) \
+                .set({'system:time_start': input_img.get('system:time_start')})
+
+        daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
 
     # Initialize variable list to only variables that can be interpolated
     interp_vars = list(set(_interp_vars) & set(variables))
@@ -196,8 +206,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
                 .set({'system:time_start': ee.Date(start_date).millis()}))
 
     # Interpolate to a daily time step
-    # NOTE: the daily function is not computing ET (ETf x ETr)
-    #   but is returning the target (ETr) band
+    # NOTE: the daily function is not computing ET (ETf x ETo)
+    #   but is returning the target (ETo) band
     daily_coll = openet.core.interpolate.daily(
         target_coll=daily_et_ref_coll,
         source_coll=scene_coll.select(interp_vars),
@@ -212,15 +222,15 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     # that are being interpolated (such as the ndvi).
     # daily_coll = daily_coll.select(['et_fraction_1'], ['et'])
 
-    # Compute ET from ETf and ETr (if necessary)
+    # Compute ET from ETf and ETo (if necessary)
     # This isn't needed if compute_product=True in daily() and band is renamed
-    # The check for et_fraction is needed since it is back computed from ET and ETr
+    # The check for et_fraction is needed since it is back computed from ET and ETo
     # if 'et' in variables or 'et_fraction' in variables:
     if 'et' in variables or 'et_fraction' in variables:
         def compute_et(img):
             """This function assumes ETr and ETf are present"""
-            et_img = img.select(['et_fraction']).multiply(
-                img.select(['et_reference']))
+            et_img = img.select(['et_fraction'])\
+                .multiply(img.select(['et_reference']))
             return img.addBands(et_img.double().rename('et'))
         daily_coll = daily_coll.map(compute_et)
 
@@ -249,25 +259,11 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         if 'et' in variables or 'et_fraction' in variables:
             et_img = daily_coll.filterDate(agg_start_date, agg_end_date) \
                 .select(['et']).sum()
-
-            # Factor needs to be applied to ET image since ETf was already
-            # multiplied by ETr in interpolate.daily() but factor is not
-            # applied until here.
-            if et_reference_factor:
-                et_img = et_img.multiply(et_reference_factor)
-
         if 'et_reference' in variables or 'et_fraction' in variables:
             # et_reference_img = daily_et_ref_coll \
             et_reference_img = daily_coll \
                 .filterDate(agg_start_date, agg_end_date) \
                 .select(['et_reference']).sum()
-            if et_reference_factor:
-                if 'et_reference' in variables or 'et_fraction' in variables:
-                    et_reference_img = et_reference_img.multiply(et_reference_factor)
-            # DEADBEEF - This doesn't seem to be doing anything
-            if et_reference_resample.lower() in ['bilinear', 'bicubic']:
-                et_reference_img = et_reference_img\
-                    .resample(et_reference_resample)
 
         image_list = []
         if 'et' in variables:
