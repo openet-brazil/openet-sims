@@ -44,7 +44,7 @@ class Model():
         doy : ee.Number
             Day of year
         crop_type_source : str, optional
-            Crop type source.  The default is the OpenET crop type image collection.
+            Crop type source.  The default is the Cropland Data Layer (CDL) assets.
             The source should be an Earth Engine Image ID (or ee.Image).
             Currently only the OpenET collection and CDL images are supported.
         crop_type_remap : {'CDL'}, optional
@@ -266,16 +266,23 @@ class Model():
             properties = properties.set('id', crop_type_img.get('system:id'))
 
         elif (type(self.crop_type_source) is str and
-              self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
+                self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
             crop_type_img = ee.Image(self.crop_type_source)\
                 .select(['cropland'])
             properties = properties.set('id', crop_type_img.get('system:id'))
 
         elif (type(self.crop_type_source) is str and
-              self.crop_type_source.lower() in [
-                  'projects/openet/crop_type',
-                  'projects/openet/assets/crop_type',
-                  'projects/earthengine-legacy/assets/projects/openet/crop_type']):
+                self.crop_type_source.lower() in [
+                    'projects/openet/crop_type',
+                    'projects/openet/crop_type_mvp',
+                    # 'projects/openet/crop_type/annual',
+                    # 'projects/openet/crop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type_mvp',
+                    # 'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
+                    # 'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
+                    'projects/openet/assets/crop_type',
+              ]):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
             year_min = ee.Number(2016)
