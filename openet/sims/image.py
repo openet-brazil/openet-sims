@@ -60,8 +60,8 @@ class Image():
             Required properties: system:time_start, system:index, system:id
         crop_type_source : str, optional
             Crop type source.  The default is the Cropland Data Layer (CDL) assets.
-            The source should be an Earth Engine Image ID (or ee.Image).
-            Currently only the OpenET collection and CDL images are supported.
+            Source should be an EE image or collection ID (or ee.Image).
+            Currently only the OpenET crop type and CDL images are supported.
         crop_type_remap : {'CDL'}, optional
             Currently only CDL crop type values are supported.
         crop_type_kc_flag : bool, optional

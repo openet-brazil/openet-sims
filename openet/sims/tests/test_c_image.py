@@ -186,7 +186,9 @@ def test_Image_crop_type_properties():
         ['USDA/NASS/CDL', [-120.5953, 36.8721], 24],
         # Test a spot that has different crop_type values through time
         # Value should match for 2017
-        ['projects/openet/crop_type', [-120.125, 36.3893], 54],
+        ['projects/openet/crop_type_mvp', [-120.125, 36.3893], 54],
+        # TODO: Change to 'projects/openet/crop_type/annual'
+        ['projects/openet/xcrop_type/annual_staged', [-120.125, 36.3893], 54],
     ]
 )
 def test_Image_crop_type_point_value(crop_type_source, xy, expected):

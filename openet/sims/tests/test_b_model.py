@@ -129,10 +129,18 @@ def test_Model_crop_type_source_cdl_image_exception():
         #     crop_type_source='USDA/NASS/CDL/2099').crop_type)
 
 
+# TODO: This will need to be changed to projects/openet/crop_type/annual
+def test_Model_crop_type_source_openet_crop_type_mvp():
+    output = utils.getinfo(default_model_obj(
+        crop_type_source='projects/openet/crop_type_mvp').crop_type)
+    assert output['properties']['id'] == 'projects/openet/crop_type_mvp'
+
+
+# TODO: Changed to 'projects/openet/crop_type/annual' when assets are ready
 def test_Model_crop_type_source_openet_crop_type():
     output = utils.getinfo(default_model_obj(
-        crop_type_source='projects/openet/crop_type').crop_type)
-    assert output['properties']['id'] == 'projects/openet/crop_type'
+        crop_type_source='projects/openet/xcrop_type/annual_staged').crop_type)
+    assert output['properties']['id'] == 'projects/openet/xcrop_type/annual_staged'
 
 
 def test_Model_crop_type_source_exception():

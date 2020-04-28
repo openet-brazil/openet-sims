@@ -499,12 +499,13 @@ def test_Collection_interpolate_output_type_default():
     assert(output[bands['count']]['data_type']['precision'] == 'int')
 
 
+# TODO: Change to 'projects/openet/crop_type/annual'
 def test_Collection_interpolate_custom_model_args():
     """Test passing in a model specific parameter through model_args"""
-    model_args = {'crop_type_source': 'projects/openet/crop_type'}
+    model_args = {'crop_type_source': 'projects/openet/crop_type_mvp'}
     output = utils.getinfo(default_coll_obj(model_args=model_args).interpolate())
     output = output['features'][0]['properties']
-    assert output['crop_type_source'] == 'projects/openet/crop_type'
+    assert output['crop_type_source'] == 'projects/openet/crop_type_mvp'
 
 
 def test_Collection_interpolate_only_interpolate_images():

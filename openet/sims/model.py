@@ -220,7 +220,8 @@ class Model():
                 Collection will be filtered to a single year that is closest
                 to the Image year.
             CDL image ID for a specific year: 'USDA/NASS/CDL/2018'
-            OpenET crop type image collection ID: 'projects/openet/crop_type'
+            OpenET crop type image collection ID:
+                'projects/openet/xcrop_type/annual'
                 Collection will be mosaiced to a single image.
             Integer (will be converted to an EE constant image)
         year : ee.Number
@@ -273,20 +274,24 @@ class Model():
 
         elif (type(self.crop_type_source) is str and
                 self.crop_type_source.lower() in [
-                    'projects/openet/crop_type',
+                    'projects/openet/crop_type/annual',
+                    'projects/openet/crop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
+                    # DEADBEEF - Remove as soon as asset folder is renamed
+                    'projects/openet/xcrop_type/annual',
+                    'projects/openet/xcrop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual',
+                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual_staged',
+                    # DEADBEEF
                     'projects/openet/crop_type_mvp',
-                    # 'projects/openet/crop_type/annual',
-                    # 'projects/openet/crop_type/annual_staged',
-                    'projects/earthengine-legacy/assets/projects/openet/crop_type',
-                    'projects/earthengine-legacy/assets/projects/openet/crop_type_mvp',
-                    # 'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
-                    # 'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
-                    'projects/openet/assets/crop_type',
+                    # CGM - At some point we may move assets to the new openet folder
+                    # 'projects/openet/assets/crop_type',
               ]):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
-            year_min = ee.Number(2016)
-            year_max = ee.Number(2018)
+            year_min = ee.Number(2008)
+            year_max = ee.Number(2019)
             start_year = ee.Number(self.year).min(year_max).max(year_min)
             crop_type_coll = ee.ImageCollection(self.crop_type_source)\
                 .filterDate(ee.Date.fromYMD(start_year, 1, 1),
