@@ -10,14 +10,23 @@ def test_int_scalar():
     # assert data.int_scalar
     # assert data.int_scalar % 10 == 0
 
+
 def test_cdl_dict():
     assert type(data.cdl) is dict
 
-@pytest.mark.parametrize('year', [2016, 2017, 2018])
+
+# CGM - This doesn't really need to be 4 separate tests
+#   It could probably be rewritten to make a single call on the collection
+# @pytest.mark.parametrize('year', [2016, 2017, 2018, 2019])
+@pytest.mark.parametrize('year', [2019])
 def test_cdl_crop_types(year):
     output = list(map(round, utils.getinfo(
         ee.Image('USDA/NASS/CDL/{}'.format(year)).get('cropland_class_values'))))
     for crop_type, crop_data in data.cdl.items():
+        # CGM - Code 228 is currently not set in the image properties
+        #   Adding this if statement until the asset is updated
+        if crop_type == 228:
+            continue
         assert crop_type in output
     # assert all(crop_type in output for crop_type, crop_data in data.cdl.items())
 
@@ -38,6 +47,7 @@ def test_cdl_crop_types(year):
 # #     #   230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
 # #     #   240, 241, 242, 249, 250, 254
 
+
 @pytest.mark.parametrize('param', ['crop_class', 'h_max', 'm_l', 'fr_mid'])
 def test_cdl_parameters(param):
     # Check that all default parameter keys have a value
@@ -46,14 +56,17 @@ def test_cdl_parameters(param):
     assert all(crop_data[param] for crop_data in data.cdl.values()
                if param in crop_data.keys())
 
+
 @pytest.mark.parametrize('param', ['fr_end', 'ls_start', 'ls_stop'])
 def test_cdl_class3_parameters(param):
     assert all(crop_data[param] for crop_data in data.cdl.values()
                if crop_data['crop_class'] == 3 and param in crop_data.keys())
 
+
 def test_cdl_class5():
     # CGM - Should rice be its own class?
     assert data.cdl[3]['crop_class'] == 5
+
 
 # CGM - How would I do this?
 # def test_cdl_int_scalar_digits():
