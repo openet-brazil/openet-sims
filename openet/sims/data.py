@@ -92,9 +92,8 @@ cdl = {
           'name': 'Cantaloupes'},
     222: {'crop_class': 1, 'h_max': 0.3, 'm_l': 2, 'fr_mid': 1,
           'name': 'Squash'},
-    # CGM - 228 is not a valid CDL code
-    # 228: {'crop_class': 1, 'h_max': 0.3, 'm_l': 2, 'fr_mid': 1,
-    #       'name': ''},
+    228: {'crop_class': 1, 'h_max': 0.3, 'm_l': 2, 'fr_mid': 1,
+          'name': ''},
     229: {'crop_class': 1, 'h_max': 0.4, 'm_l': 2, 'fr_mid': 1,
           'name': 'Pumpkins'},
 

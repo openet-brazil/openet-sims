@@ -34,6 +34,7 @@ class Model():
             crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
             mask_non_ag_flag=False,
             water_kc_flag=True,
+            reflectance_type='SR',
         ):
         """Earth Engine based SIMS model object
 
@@ -43,7 +44,7 @@ class Model():
         doy : ee.Number
             Day of year
         crop_type_source : str, optional
-            Crop type source.  The default is the OpenET crop type image collection.
+            Crop type source.  The default is the Cropland Data Layer (CDL) assets.
             The source should be an Earth Engine Image ID (or ee.Image).
             Currently only the OpenET collection and CDL images are supported.
         crop_type_remap : {'CDL'}, optional
@@ -56,6 +57,8 @@ class Model():
             The default is False.
         water_kc_flag : bool, optional
             If True, set Kc for water pixels to 1.05.  The default is True.
+        reflectance_type : {'SR', 'TOA'}, optional
+            Used to select the fractional cover equation (the default is 'SR').
 
         """
 
@@ -95,6 +98,13 @@ class Model():
             'ls_stop', self.crop_type, self.crop_data, 365)
         # setattr('h_max', crop_data_image(
         #     'h_max', self.crop_type, self.crop_data))
+
+        self.reflectance_type = reflectance_type
+        # TODO: Should type be checked (and exception raised) here or in fc()?
+        #   Being raised in fc() for now since it is not a lazy property
+        # if self.reflectance_type not in ['SR', 'TOA']:
+        #     raise ValueError(
+        #         f'unsupported reflectance type: {reflectance_type}')
 
     # CGM - It would be nice if kc and fc were lazy properties but then fc and
     #   ndvi would need to part of self (inherited from Image?).
@@ -181,14 +191,24 @@ class Model():
         -------
         ee.Image
 
+        Raises
+        ------
+        ValueError if reflectance type is not supported
+
         References
         ----------
 
 
         """
-        return ndvi.multiply(1.26).subtract(0.18)\
-            .clamp(0, 1)\
-            .rename(['fc'])
+        if self.reflectance_type == 'SR':
+            fc = ndvi.multiply(1.26).subtract(0.18)
+        elif self.reflectance_type == 'TOA':
+            fc = ndvi.multiply(1.465).subtract(0.139)
+        else:
+            raise ValueError(
+                f'Unsupported reflectance type: {self.reflectance_type}')
+
+        return fc.clamp(0, 1).rename(['fc'])
 
     def _crop_type(self):
         """Crop type
@@ -200,7 +220,8 @@ class Model():
                 Collection will be filtered to a single year that is closest
                 to the Image year.
             CDL image ID for a specific year: 'USDA/NASS/CDL/2018'
-            OpenET crop type image collection ID: 'projects/openet/crop_type'
+            OpenET crop type image collection ID:
+                'projects/openet/xcrop_type/annual'
                 Collection will be mosaiced to a single image.
             Integer (will be converted to an EE constant image)
         year : ee.Number
@@ -246,20 +267,31 @@ class Model():
             properties = properties.set('id', crop_type_img.get('system:id'))
 
         elif (type(self.crop_type_source) is str and
-              self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
+                self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
             crop_type_img = ee.Image(self.crop_type_source)\
                 .select(['cropland'])
             properties = properties.set('id', crop_type_img.get('system:id'))
 
         elif (type(self.crop_type_source) is str and
-              self.crop_type_source.lower() in [
-                  'projects/openet/crop_type',
-                  'projects/openet/assets/crop_type',
-                  'projects/earthengine-legacy/assets/projects/openet/crop_type']):
+                self.crop_type_source.lower() in [
+                    'projects/openet/crop_type/annual',
+                    'projects/openet/crop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
+                    # DEADBEEF - Remove as soon as asset folder is renamed
+                    'projects/openet/xcrop_type/annual',
+                    'projects/openet/xcrop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual',
+                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual_staged',
+                    # DEADBEEF
+                    'projects/openet/crop_type_mvp',
+                    # CGM - At some point we may move assets to the new openet folder
+                    # 'projects/openet/assets/crop_type',
+              ]):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
-            year_min = ee.Number(2016)
-            year_max = ee.Number(2018)
+            year_min = ee.Number(2008)
+            year_max = ee.Number(2019)
             start_year = ee.Number(self.year).min(year_max).max(year_min)
             crop_type_coll = ee.ImageCollection(self.crop_type_source)\
                 .filterDate(ee.Date.fromYMD(start_year, 1, 1),
@@ -319,7 +351,7 @@ class Model():
         Parameters
         ----------
         ndvi : ee.Image
-            Normalized diffference vegetation index.
+            Normalized difference vegetation index.
 
         Returns
         -------

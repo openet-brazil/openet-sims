@@ -45,7 +45,9 @@ def default_image_args(ndvi=0.8,
                        et_reference_factor=0.85,
                        et_reference_resample='nearest',
                        crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                       crop_type_kc_flag=False, mask_non_ag_flag=False):
+                       crop_type_kc_flag=False, mask_non_ag_flag=False,
+                       # reflectance_type='SR',
+                       ):
     return {
         'image': default_image(ndvi=ndvi),
         'et_reference_source': et_reference_source,
@@ -56,6 +58,7 @@ def default_image_args(ndvi=0.8,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
         'mask_non_ag_flag': mask_non_ag_flag,
+        # 'reflectance_type': reflectance_type,
     }
 
 
@@ -65,7 +68,9 @@ def default_image_obj(ndvi=0.8,
                       et_reference_factor=0.85,
                       et_reference_resample='nearest',
                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                      crop_type_kc_flag=False, mask_non_ag_flag=False):
+                      crop_type_kc_flag=False, mask_non_ag_flag=False,
+                      # reflectance_type='SR',
+                      ):
     return sims.Image(**default_image_args(
         ndvi=ndvi,
         et_reference_source=et_reference_source,
@@ -76,6 +81,7 @@ def default_image_obj(ndvi=0.8,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,
         mask_non_ag_flag=mask_non_ag_flag,
+        # reflectance_type=reflectance_type,
     ))
 
 
@@ -89,6 +95,7 @@ def test_Image_init_default_parameters():
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
     # assert m.mask_non_ag_flag == False
+    assert m.reflectance_type == 'SR'
 
 
 def test_Image_init_calculated_properties():
@@ -179,7 +186,9 @@ def test_Image_crop_type_properties():
         ['USDA/NASS/CDL', [-120.5953, 36.8721], 24],
         # Test a spot that has different crop_type values through time
         # Value should match for 2017
-        ['projects/openet/crop_type', [-120.125, 36.3893], 54],
+        ['projects/openet/crop_type_mvp', [-120.125, 36.3893], 54],
+        # TODO: Change to 'projects/openet/crop_type/annual'
+        ['projects/openet/xcrop_type/annual_staged', [-120.125, 36.3893], 54],
     ]
 )
 def test_Image_crop_type_point_value(crop_type_source, xy, expected):
@@ -380,10 +389,78 @@ def test_Image_from_landsat_c1_sr_exception():
         utils.getinfo(sims.Image.from_landsat_c1_sr(ee.Image('FOO')).ndvi)
 
 
+def test_Image_from_landsat_c1_sr_reflectance_type():
+    """Test if reflectance_type property is being set"""
+    image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
+    assert sims.Image.from_landsat_c1_sr(image_id).reflectance_type == 'SR'
+
+
+def test_Image_from_landsat_c1_toa_default_image():
+    """Test that the classmethod is returning a class object"""
+    output = sims.Image.from_landsat_c1_toa(input_image())
+    assert type(output) == type(default_image_obj())
+
+
+@pytest.mark.parametrize(
+    'image_id',
+    [
+        'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716',
+        'LANDSAT/LE07/C01/T1_TOA/LE07_044033_20170708',
+        'LANDSAT/LT05/C01/T1_TOA/LT05_044033_20110716',
+        'LANDSAT/LT04/C01/T1_TOA/LT04_044033_19830812',
+        'LANDSAT/LC08/C01/T1_RT_TOA/LC08_044033_20170716',
+        'LANDSAT/LE07/C01/T1_RT_TOA/LE07_044033_20170708',
+
+    ]
+)
+def test_Image_from_landsat_c1_toa_image_id(image_id):
+    """Test instantiating the class from a Landsat image ID"""
+    output = utils.getinfo(sims.Image.from_landsat_c1_toa(image_id).ndvi)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c1_toa_image():
+    """Test instantiating the class from a Landsat ee.Image"""
+    image_id = 'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716'
+    output = utils.getinfo(sims.Image.from_landsat_c1_toa(
+        ee.Image(image_id)).ndvi)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c1_toa_kc():
+    """Test if ET fraction can be built from a Landsat images"""
+    image_id = 'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716'
+    output = utils.getinfo(sims.Image.from_landsat_c1_toa(image_id).kc)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c1_toa_et():
+    """Test if ET can be built from a Landsat images"""
+    image_id = 'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716'
+    output = utils.getinfo(sims.Image.from_landsat_c1_toa(
+        image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr').et)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c1_toa_exception():
+    """Test that an Exception is raise for an invalid image ID"""
+    with pytest.raises(Exception):
+        utils.getinfo(sims.Image.from_landsat_c1_toa(ee.Image('FOO')).ndvi)
+
+
+def test_Image_from_landsat_c1_toa_reflectance_type():
+    """Test if reflectance_type property is being set"""
+    image_id = 'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716'
+    assert sims.Image.from_landsat_c1_toa(image_id).reflectance_type == 'TOA'
+
+
 @pytest.mark.parametrize(
     'image_id',
     [
         'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716',
+        'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716',
+        'LANDSAT/LC08/C01/T1_RT_TOA/LC08_044033_20170716',
     ]
 )
 def test_Image_from_image_id(image_id):
