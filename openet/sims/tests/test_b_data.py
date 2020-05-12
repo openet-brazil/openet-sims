@@ -23,10 +23,6 @@ def test_cdl_crop_types(year):
     output = list(map(round, utils.getinfo(
         ee.Image('USDA/NASS/CDL/{}'.format(year)).get('cropland_class_values'))))
     for crop_type, crop_data in data.cdl.items():
-        # CGM - Code 228 is currently not set in the image properties
-        #   Adding this if statement until the asset is updated
-        if crop_type == 228:
-            continue
         assert crop_type in output
     # assert all(crop_type in output for crop_type, crop_data in data.cdl.items())
 
