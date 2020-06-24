@@ -251,7 +251,7 @@ class Model():
             # Use the CDL image closest to the image date
             # Hard coding the CDL year range but it could be computed dynamically
             year_min = ee.Number(2008)
-            year_max = ee.Number(2018)
+            year_max = ee.Number(2019)
             # year_max = ee.Date(ee.ImageCollection('USDA/NASS/CDL')
             #     .limit(1, 'system:index', False).first()
             #     .get('system:time_start')).get('year')
