@@ -278,36 +278,17 @@ class Model():
                     'projects/openet/crop_type/annual_staged',
                     'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
                     'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
-                    # DEADBEEF - Remove as soon as asset folder is renamed
-                    'projects/openet/xcrop_type/annual',
-                    'projects/openet/xcrop_type/annual_staged',
-                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual',
-                    'projects/earthengine-legacy/assets/projects/openet/xcrop_type/annual_staged',
-                    # DEADBEEF
-                    'projects/openet/crop_type_mvp',
-                    # CGM - At some point we may move assets to the new openet folder
-                    # 'projects/openet/assets/crop_type',
               ]):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
-            year_min = ee.Number(2008)
-            year_max = ee.Number(2019)
+            year_min = ee.Number(2000)
+            year_max = ee.Number(2020)
             start_year = ee.Number(self.year).min(year_max).max(year_min)
             crop_type_coll = ee.ImageCollection(self.crop_type_source)\
                 .filterDate(ee.Date.fromYMD(start_year, 1, 1),
                             ee.Date.fromYMD(start_year.add(1), 1, 1))
             crop_type_img = crop_type_coll.mosaic()
             properties = properties.set('id', crop_type_coll.get('system:id'))
-
-            # # DEADBEEF - Testing adding the CDL to the crop_type image asset
-            # #   Not sure which year we should use though
-            # #   I think adding this to the crop type asset makes way more sense
-            # cdl_img = crop_type_img = ee.Image('USDA/NASS/CDL/2018')\
-            #     .select(['cropland'])
-            # crop_type_img = crop_type_img.unmask()\
-            #     .where(crop_type_img.mask().Not().And(cdl_img.mask()), cdl_img)\
-            #     .updateMask(cdl_img.mask())
-            # # properties = properties.set('id', 'projects/openet/crop_type')
 
         # TODO: Support ee.Image and ee.ImageCollection sources
         # elif isinstance(self.crop_type_source, computedobject.ComputedObject):
