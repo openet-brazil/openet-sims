@@ -564,3 +564,56 @@ def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
     output = utils.constant_image_value(mod.kc(ndvi_img))
     expected = ndvi_to_kc_point(ndvi, doy, crop_type_num)
     assert abs(output['kc'] - expected) <= tol
+
+
+# Check the Kcb calculation for alfalfa
+@pytest.mark.parametrize(
+    'crop_type, fc, expected',
+    [
+        # [36, -0.1, 0.15],   # Check clamping
+        [36, 0.0, 0.15],  # NDVI == 0.1429
+        [36, 0.1, 0.2634],  # NDVI == 0.2222
+        [36, 0.2, 0.3906],  # NDVI == 0.3016
+        [36, 0.3, 0.5144],  # NDVI == 0.3809
+        [36, 0.4, 0.6281],  # NDVI == 0.4603
+        [36, 0.5, 0.7296],  # NDVI == 0.5397
+        [36, 0.6, 0.8185],  # NDVI == 0.6190
+        [36, 0.7, 0.8959],  # NDVI == 0.6984
+        [36, 0.8, 0.9568],  # NDVI == 0.7778
+        [36, 0.9, 1.0147],  # NDVI == 0.8571
+        [36, 1.0, 1.07],
+        [36, 1.1, 1.07],  # Check clamping
+    ]
+)
+def test_Model_crop_type_kcb(crop_type, fc, expected, tol=0.0001):
+    model = default_model_obj(crop_type_source=crop_type,
+                              crop_type_kc_flag=True)
+    output = utils.constant_image_value(model._kcb(model._kd_row_crop(
+        fc=ee.Image.constant(fc))))
+    assert abs(output['kcb'] - expected) <= tol
+
+
+@pytest.mark.parametrize(
+    'crop_type, fc, expected',
+    [
+        # [36, -0.1, 0.0],   # Check clamping
+        [36, 0.0, 0.0],  # NDVI == 0.1429
+        [36, 0.1, 0.1233],  # NDVI == 0.2222
+        [36, 0.2, 0.2615],  # NDVI == 0.3016
+        [36, 0.3, 0.3961],  # NDVI == 0.3809
+        [36, 0.4, 0.5197],  # NDVI == 0.4603
+        [36, 0.5, 0.6300],  # NDVI == 0.5397
+        [36, 0.6, 0.7267],  # NDVI == 0.6190
+        [36, 0.7, 0.8107],  # NDVI == 0.6984
+        [36, 0.8, 0.8770],  # NDVI == 0.7778
+        [36, 0.9, 0.9399],  # NDVI == 0.8571
+        [36, 1.0, 1.0],
+        [36, 1.1, 1.0],  # Check clamping
+    ]
+)
+def test_Model_crop_type_kd(crop_type, fc, expected, tol=0.0001):
+    model = default_model_obj(crop_type_source=crop_type,
+                              crop_type_kc_flag=True)
+    output = utils.constant_image_value(model._kd_row_crop(
+        fc=ee.Image.constant(fc)))
+    assert abs(output['kd'] - expected) <= tol
