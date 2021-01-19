@@ -501,10 +501,10 @@ def test_Collection_interpolate_output_type_default():
 
 def test_Collection_interpolate_custom_model_args():
     """Test passing in a model specific parameter through model_args"""
-    model_args = {'crop_type_source': 'projects/openet/crop_type/annual_staged'}
+    model_args = {'crop_type_source': 'projects/openet/crop_type/annual_provisional'}
     output = utils.getinfo(default_coll_obj(model_args=model_args).interpolate())
     output = output['features'][0]['properties']
-    assert output['crop_type_source'] == 'projects/openet/crop_type/annual_staged'
+    assert output['crop_type_source'] == 'projects/openet/crop_type/annual_provisional'
 
 
 def test_Collection_interpolate_only_interpolate_images():

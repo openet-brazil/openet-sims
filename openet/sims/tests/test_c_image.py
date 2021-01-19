@@ -184,7 +184,7 @@ def test_Image_crop_type_properties():
         ['USDA/NASS/CDL/2018', [-120.5953, 36.8721], 213],
         # Default image year is 2017 so value should match 2017 CDL
         ['USDA/NASS/CDL', [-120.5953, 36.8721], 24],
-        ['projects/openet/crop_type/annual_staged', [-120.125, 36.3893], 47],
+        ['projects/openet/crop_type/annual_provisional', [-120.125, 36.3893], 47],
     ]
 )
 def test_Image_crop_type_point_value(crop_type_source, xy, expected):

@@ -276,8 +276,10 @@ class Model():
                 self.crop_type_source.lower() in [
                     'projects/openet/crop_type/annual',
                     'projects/openet/crop_type/annual_staged',
+                    'projects/openet/crop_type/annual_provisional',
                     'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
                     'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
+                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_provisional',
               ]):
             # Use the crop_type image closest to the image date
             # Hard coding the year range but it could be computed dynamically
