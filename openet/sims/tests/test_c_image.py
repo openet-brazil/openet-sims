@@ -451,12 +451,72 @@ def test_Image_from_landsat_c1_toa_reflectance_type():
     assert sims.Image.from_landsat_c1_toa(image_id).reflectance_type == 'TOA'
 
 
+def test_Image_from_landsat_c2_sr_default_image():
+    """Test that the classmethod is returning a class object"""
+    output = sims.Image.from_landsat_c2_sr(input_image())
+    assert type(output) == type(default_image_obj())
+
+
+@pytest.mark.parametrize(
+    'image_id',
+    [
+        # Test image until the rest of the collection is loaded
+        'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+        # 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
+        # 'LANDSAT/LE07/C02/T1_L2/LE07_044033_20170708',
+        # 'LANDSAT/LT05/C02/T1_L2/LT05_044033_20110716',
+        # 'LANDSAT/LT04/C02/T1_L2/LT04_044033_19830812',
+    ]
+)
+def test_Image_from_landsat_c2_sr_image_id(image_id):
+    """Test instantiating the class from a Landsat image ID"""
+    output = utils.getinfo(sims.Image.from_landsat_c2_sr(image_id).ndvi)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c2_sr_image():
+    """Test instantiating the class from a Landsat ee.Image"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    output = utils.getinfo(sims.Image.from_landsat_c2_sr(
+        ee.Image(image_id)).ndvi)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c1_sr_kc():
+    """Test if ET fraction can be built from a Landsat images"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    output = utils.getinfo(sims.Image.from_landsat_c2_sr(image_id).kc)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c2_sr_et():
+    """Test if ET can be built from a Landsat images"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    output = utils.getinfo(sims.Image.from_landsat_c2_sr(
+        image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr').et)
+    assert output['properties']['system:index'] == image_id.split('/')[-1]
+
+
+def test_Image_from_landsat_c2_sr_exception():
+    """Test that an Exception is raise for an invalid image ID"""
+    with pytest.raises(Exception):
+        utils.getinfo(sims.Image.from_landsat_c2_sr(ee.Image('FOO')).ndvi)
+
+
+def test_Image_from_landsat_c2_sr_reflectance_type():
+    """Test if reflectance_type property is being set"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    assert sims.Image.from_landsat_c2_sr(image_id).reflectance_type == 'SR'
+
+
 @pytest.mark.parametrize(
     'image_id',
     [
         'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716',
         'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716',
         'LANDSAT/LC08/C01/T1_RT_TOA/LC08_044033_20170716',
+        'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828',
     ]
 )
 def test_Image_from_image_id(image_id):

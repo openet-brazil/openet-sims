@@ -380,6 +380,8 @@ class Image():
             'LANDSAT/LT04/C01/T1_TOA': 'from_landsat_c1_toa',
             'LANDSAT/LC08/C01/T1_RT_TOA': 'from_landsat_c1_toa',
             'LANDSAT/LE07/C01/T1_RT_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LC08/C02/T1_L2': 'from_landsat_c2_sr',
+            'LANDSAT/LE07/C02/T1_L2': 'from_landsat_c2_sr',
         }
 
         try:
@@ -495,6 +497,68 @@ class Image():
             })
 
         return cls(input_image, reflectance_type='TOA', **kwargs)
+
+    @classmethod
+    def from_landsat_c2_sr(cls, sr_image, **kwargs):
+        """Construct a SIMS Image instance from a Landsat SR image
+
+        Parameters
+        ----------
+        sr_image : ee.Image, str
+            A raw Landsat Collection 2 SR image or image ID.
+        kwargs : dict
+            Keyword arguments to pass through to model init.
+
+        Returns
+        -------
+        new instance of Image class
+
+        Notes
+        -----
+        https://www.usgs.gov/faqs/how-do-i-use-a-scale-factor-landsat-level-2-science-products?qt-news_science_products=0#qt-news_science_products
+        https://www.usgs.gov/core-science-systems/nli/landsat/landsat-collection-2-level-2-science-products
+
+        """
+        sr_image = ee.Image(sr_image)
+
+        # Use the SATELLITE property identify each Landsat type
+        spacecraft_id = ee.String(sr_image.get('SPACECRAFT_ID'))
+
+        # Rename bands to generic names
+        input_bands = ee.Dictionary({
+            'LANDSAT_4': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7',
+                          'ST_B6', 'QA_PIXEL'],
+            'LANDSAT_5': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7',
+                          'ST_B6', 'QA_PIXEL'],
+            'LANDSAT_7': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7',
+                          'ST_B6', 'QA_PIXEL'],
+            'LANDSAT_8': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
+                          'ST_B10', 'QA_PIXEL'],
+        })
+        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2',
+                        'tir', 'QA_PIXEL']
+        prep_image = sr_image\
+            .select(input_bands.get(spacecraft_id), output_bands)\
+            .multiply([0.0000275, 0.0000275, 0.0000275, 0.0000275, 0.0000275, 0.0000275,
+                       0.00341802, 1])\
+            .add([-0.2, -0.2, -0.2, -0.2, -0.2, -0.2, 149.0, 1])
+
+        # Build the input image
+        # Eventually send the BQA band or a cloud mask through also
+        input_image = ee.Image([
+            cls._ndvi(prep_image)
+        ])
+
+        # Apply the cloud mask and add properties
+        input_image = input_image\
+            .updateMask(common.landsat_c2_sr_cloud_mask(sr_image))\
+            .set({
+                'system:index': sr_image.get('system:index'),
+                'system:time_start': sr_image.get('system:time_start'),
+                'system:id': sr_image.get('system:id'),
+            })
+
+        return cls(input_image, reflectance_type='SR', **kwargs)
 
     @staticmethod
     def _ndvi(landsat_image):
