@@ -12,12 +12,13 @@
 # python_version  : 3.2
 
 import ee
+import openet.core.common
 
 from .model import Model
 # from . import model
 from . import utils
-import openet.core.common as common
 # import utils
+
 
 def lazy_property(fn):
     """Decorator that makes a property lazy-evaluated
@@ -382,6 +383,8 @@ class Image():
             'LANDSAT/LE07/C01/T1_RT_TOA': 'from_landsat_c1_toa',
             'LANDSAT/LC08/C02/T1_L2': 'from_landsat_c2_sr',
             'LANDSAT/LE07/C02/T1_L2': 'from_landsat_c2_sr',
+            'LANDSAT/LT05/C02/T1_L2': 'from_landsat_c2_sr',
+            'LANDSAT/LT04/C02/T1_L2': 'from_landsat_c2_sr',
         }
 
         try:
@@ -396,13 +399,15 @@ class Image():
         return method(ee.Image(image_id), **kwargs)
 
     @classmethod
-    def from_landsat_c1_sr(cls, sr_image, **kwargs):
+    def from_landsat_c1_sr(cls, sr_image, cloudmask_args={}, **kwargs):
         """Construct a SIMS Image instance from a Landsat SR image
 
         Parameters
         ----------
         sr_image : ee.Image, str
             A raw Landsat Collection 1 SR image or image ID.
+        cloudmask_args : dict
+            keyword arguments to pass through to cloud mask function
         kwargs : dict
             Keyword arguments to pass through to model init.
 
@@ -429,15 +434,18 @@ class Image():
             .select(input_bands.get(spacecraft_id), output_bands)\
             .multiply([0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.1, 1])
 
+        cloud_mask = openet.core.common.landsat_c1_sr_cloud_mask(
+            sr_image, **cloudmask_args)
+
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
         input_image = ee.Image([
-            cls._ndvi(prep_image)
+            cls._ndvi(prep_image),
         ])
 
         # Apply the cloud mask and add properties
         input_image = input_image\
-            .updateMask(common.landsat_c1_sr_cloud_mask(sr_image))\
+            .updateMask(cloud_mask)\
             .set({
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),
@@ -447,13 +455,15 @@ class Image():
         return cls(input_image, reflectance_type='SR', **kwargs)
 
     @classmethod
-    def from_landsat_c1_toa(cls, toa_image, **kwargs):
+    def from_landsat_c1_toa(cls, toa_image, cloudmask_args={}, **kwargs):
         """Construct a SIMS Image instance from a Landsat TOA image
 
         Parameters
         ----------
         toa_image : ee.Image, str
             A raw Landsat Collection 1 TOA image or image ID.
+        cloudmask_args : dict
+            keyword arguments to pass through to cloud mask function
         kwargs : dict
             Keyword arguments to pass through to model init.
 
@@ -478,18 +488,20 @@ class Image():
         output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
                         'BQA']
         prep_image = toa_image\
-            .select(input_bands.get(spacecraft_id), output_bands)\
-            .set({'SATELLITE': spacecraft_id})
+            .select(input_bands.get(spacecraft_id), output_bands)
+
+        cloud_mask = openet.core.common.landsat_c1_toa_cloud_mask(
+            toa_image, **cloudmask_args)
 
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
         input_image = ee.Image([
-            cls._ndvi(prep_image)
+            cls._ndvi(prep_image),
         ])
 
         # Apply the cloud mask and add properties
         input_image = input_image\
-            .updateMask(common.landsat_c1_toa_cloud_mask(toa_image))\
+            .updateMask(cloud_mask)\
             .set({
                 'system:index': toa_image.get('system:index'),
                 'system:time_start': toa_image.get('system:time_start'),
@@ -499,13 +511,15 @@ class Image():
         return cls(input_image, reflectance_type='TOA', **kwargs)
 
     @classmethod
-    def from_landsat_c2_sr(cls, sr_image, **kwargs):
+    def from_landsat_c2_sr(cls, sr_image, cloudmask_args={}, **kwargs):
         """Construct a SIMS Image instance from a Landsat SR image
 
         Parameters
         ----------
         sr_image : ee.Image, str
             A raw Landsat Collection 2 SR image or image ID.
+        cloudmask_args : dict
+            keyword arguments to pass through to cloud mask function
         kwargs : dict
             Keyword arguments to pass through to model init.
 
@@ -521,7 +535,7 @@ class Image():
         """
         sr_image = ee.Image(sr_image)
 
-        # Use the SATELLITE property identify each Landsat type
+        # Use the SPACECRAFT_ID property identify each Landsat type
         spacecraft_id = ee.String(sr_image.get('SPACECRAFT_ID'))
 
         # Rename bands to generic names
@@ -543,15 +557,18 @@ class Image():
                        0.00341802, 1])\
             .add([-0.2, -0.2, -0.2, -0.2, -0.2, -0.2, 149.0, 1])
 
+        cloud_mask = openet.core.common.landsat_c2_sr_cloud_mask(
+            sr_image, **cloudmask_args)
+
         # Build the input image
-        # Eventually send the BQA band or a cloud mask through also
+        # Eventually send the QA band or a cloud mask through also
         input_image = ee.Image([
-            cls._ndvi(prep_image)
+            cls._ndvi(prep_image),
         ])
 
         # Apply the cloud mask and add properties
         input_image = input_image\
-            .updateMask(common.landsat_c2_sr_cloud_mask(sr_image))\
+            .updateMask(cloud_mask)\
             .set({
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),

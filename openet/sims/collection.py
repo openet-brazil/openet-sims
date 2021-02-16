@@ -4,14 +4,14 @@ import pprint
 
 from dateutil.relativedelta import *
 import ee
+import openet.core.interpolate
+# TODO: import utils from openet.core
+# import openet.core.utils as utils
 
 from . import utils
 from .image import Image
 # Importing to get version number, is there a better way?
 import openet.sims
-import openet.core.interpolate
-# TODO: import utils from openet.core
-# import openet.core.utils as utils
 
 
 def lazy_property(fn):
@@ -141,6 +141,12 @@ class Collection():
         # CGM - Should this be specified in the interpolation method instead?
         self._interp_vars = ['ndvi', 'et_fraction']
 
+        self._landsat_c2_sr_collections = [
+            'LANDSAT/LC08/C02/T1_L2',
+            'LANDSAT/LE07/C02/T1_L2',
+            'LANDSAT/LT05/C02/T1_L2',
+            'LANDSAT/LT04/C02/T1_L2',
+        ]
         self._landsat_c1_sr_collections = [
             'LANDSAT/LC08/C01/T1_SR',
             'LANDSAT/LE07/C01/T1_SR',
@@ -155,12 +161,6 @@ class Collection():
             'LANDSAT/LT05/C01/T1_TOA',
             'LANDSAT/LT04/C01/T1_TOA',
         ]
-        self._landsat_c2_sr_collections = [
-            'LANDSAT/LC08/C02/T1_L2',
-            'LANDSAT/LE07/C02/T1_L2',
-            # 'LANDSAT/LT05/C02/T1_SR',
-            # 'LANDSAT/LT04/C02/T1_SR',
-        ]
 
         # If collections is a string, place in a list
         if type(self.collections) is str:
@@ -168,9 +168,9 @@ class Collection():
 
         # Check that collection IDs are supported
         for coll_id in self.collections:
-            if (coll_id not in self._landsat_c1_toa_collections and
-                    coll_id not in self._landsat_c1_sr_collections and
-                    coll_id not in self._landsat_c2_sr_collections):
+            if (coll_id not in self._landsat_c2_sr_collections and
+                    coll_id not in self._landsat_c1_toa_collections and
+                    coll_id not in self._landsat_c1_sr_collections):
                 raise ValueError(
                     'unsupported collection: {}'.format(coll_id))
 
@@ -259,6 +259,7 @@ class Collection():
         # Build the variable image collection
         variable_coll = ee.ImageCollection([])
         for coll_id in self.collections:
+            # TODO: Move to separate methods/functions for each type
             if coll_id in self._landsat_c2_sr_collections:
                 input_coll = ee.ImageCollection(coll_id)\
                     .filterDate(start_date, end_date)\

@@ -460,10 +460,8 @@ def test_Image_from_landsat_c2_sr_default_image():
 @pytest.mark.parametrize(
     'image_id',
     [
-        # Test image until the rest of the collection is loaded
-        'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
-        # 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
-        # 'LANDSAT/LE07/C02/T1_L2/LE07_044033_20170708',
+        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
+        'LANDSAT/LE07/C02/T1_L2/LE07_044033_20170708',
         # 'LANDSAT/LT05/C02/T1_L2/LT05_044033_20110716',
         # 'LANDSAT/LT04/C02/T1_L2/LT04_044033_19830812',
     ]
@@ -476,7 +474,7 @@ def test_Image_from_landsat_c2_sr_image_id(image_id):
 
 def test_Image_from_landsat_c2_sr_image():
     """Test instantiating the class from a Landsat ee.Image"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(
         ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
@@ -484,14 +482,14 @@ def test_Image_from_landsat_c2_sr_image():
 
 def test_Image_from_landsat_c1_sr_kc():
     """Test if ET fraction can be built from a Landsat images"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(image_id).kc)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
 def test_Image_from_landsat_c2_sr_et():
     """Test if ET can be built from a Landsat images"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(
         image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET',
         et_reference_band='etr').et)
@@ -504,10 +502,36 @@ def test_Image_from_landsat_c2_sr_exception():
         utils.getinfo(sims.Image.from_landsat_c2_sr(ee.Image('FOO')).ndvi)
 
 
+def test_Image_from_landsat_c2_sr_scaling():
+    """Test if Landsat SR images images are being scaled"""
+    sr_img = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716')
+    # CGM - These reflectances should correspond to 0.1 for RED and 0.2 for NIR
+    input_img = ee.Image.constant([10909, 10909, 10909, 14545, 10909, 10909,
+                                   44177.6, 322]) \
+        .rename(['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
+                 'ST_B10', 'QA_PIXEL']) \
+        .set({'SPACECRAFT_ID': ee.String(sr_img.get('SPACECRAFT_ID')),
+              'system:id': ee.String(sr_img.get('system:id')),
+              'system:index': ee.String(sr_img.get('system:index')),
+              'system:time_start': ee.Number(sr_img.get('system:time_start'))})
+
+    output = utils.constant_image_value(
+        sims.Image.from_landsat_c2_sr(input_img).ndvi)
+    assert abs(output['ndvi'] - 0.333) <= 0.01
+
+
 def test_Image_from_landsat_c2_sr_reflectance_type():
     """Test if reflectance_type property is being set"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     assert sims.Image.from_landsat_c2_sr(image_id).reflectance_type == 'SR'
+
+
+def test_Image_from_landsat_c2_sr_cloud_mask_args():
+    """Test if the cloud_mask_args parameter can be set (not if it works)"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
+    output = sims.Image.from_landsat_c2_sr(
+        image_id, cloudmask_args={'snow_flag': True, 'cirrus_flag': True})
+    assert type(output) == type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -516,7 +540,7 @@ def test_Image_from_landsat_c2_sr_reflectance_type():
         'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716',
         'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716',
         'LANDSAT/LC08/C01/T1_RT_TOA/LC08_044033_20170716',
-        'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828',
+        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
     ]
 )
 def test_Image_from_image_id(image_id):
