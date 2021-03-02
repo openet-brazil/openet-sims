@@ -480,7 +480,7 @@ def test_Image_from_landsat_c2_sr_image():
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
-def test_Image_from_landsat_c1_sr_kc():
+def test_Image_from_landsat_c2_sr_kc():
     """Test if ET fraction can be built from a Landsat images"""
     image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(image_id).kc)
@@ -507,7 +507,7 @@ def test_Image_from_landsat_c2_sr_scaling():
     sr_img = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716')
     # CGM - These reflectances should correspond to 0.1 for RED and 0.2 for NIR
     input_img = ee.Image.constant([10909, 10909, 10909, 14545, 10909, 10909,
-                                   44177.6, 322]) \
+                                   44177.6, 21824]) \
         .rename(['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
                  'ST_B10', 'QA_PIXEL']) \
         .set({'SPACECRAFT_ID': ee.String(sr_img.get('SPACECRAFT_ID')),
