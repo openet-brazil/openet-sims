@@ -445,7 +445,7 @@ def test_Model_kc_crop_type_kc_flag_true_class_3():
 
 
 def test_Model_kc_crop_class_2_clamping():
-    m = default_model_obj(crop_type_source=69)
+    m = default_model_obj(crop_type_source=78)
     output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(0.85)))
     assert output['kc'] == 1.1
 
