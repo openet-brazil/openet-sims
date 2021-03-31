@@ -1,8 +1,8 @@
 """
 References
 ----------
-Allen, R. and L. Pereira (2009).  Estimating crop coefficients from
-    fraction of ground cover and height.  Irrigation Science 28:17-34.
+    Allen, R. and L. Pereira (2009).  Estimating crop coefficients from
+    fraction of ground cover and height. Irrigation Science 28:17-34.
     DOI 10.1007/s00271-009-0182-z
 """
 
