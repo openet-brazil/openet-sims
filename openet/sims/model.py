@@ -35,6 +35,7 @@ class Model():
             mask_non_ag_flag=False,
             water_kc_flag=True,
             reflectance_type='SR',
+            crop_type_annual_skip_flag=False,
         ):
         """Earth Engine based SIMS model object
 
@@ -74,6 +75,7 @@ class Model():
         self.crop_type_kc_flag = crop_type_kc_flag
         self.mask_non_ag_flag = mask_non_ag_flag
         self.water_kc_flag = water_kc_flag
+        self.crop_type_annual_skip_flag = crop_type_annual_skip_flag
 
         # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
@@ -162,8 +164,13 @@ class Model():
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
             # The h_max image was built with all non-remapped crop_types as nodata
-            kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
-                          self._kcb(self._kd_row_crop(fc)))
+            if self.crop_type_annual_skip_flag is False:
+                kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
+                              self._kcb(self._kd_row_crop(fc)))
+
+            # do vines like trees
+            kc = kc.where(self.crop_class.eq(2).And((self.h_max.gte(0)),
+                          self._kcb(self._kd_vine(fc)).clamp(0, 1.1)) #Check max value
 
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))

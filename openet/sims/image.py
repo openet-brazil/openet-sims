@@ -51,6 +51,7 @@ class Image():
             mask_non_ag_flag=False,
             water_kc_flag=True,
             reflectance_type='SR',
+            crop_type_annual_skip_flag=False,
         ):
         """Earth Engine based SIMS image object
 
@@ -149,6 +150,7 @@ class Image():
             mask_non_ag_flag=mask_non_ag_flag,
             water_kc_flag=water_kc_flag,
             reflectance_type=reflectance_type,
+            crop_type_annual_skip_flag=crop_type_annual_skip_flag,
         )
 
     def calculate(self, variables=['et']):
