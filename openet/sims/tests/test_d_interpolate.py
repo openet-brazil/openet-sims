@@ -181,7 +181,7 @@ def test_water_balance_landsat(tol=0.001):
                 .filterBounds(ee.Geometry.Point(TEST_POINT))
 
         ls = ls7.merge(ls8)
-        zero = ls.first().select(['B2']).double().multiply(0)
+        zero = ls.first().select(1).double().multiply(0)
 
         def make_et_frac(img):
             if ls_collection == 1:
