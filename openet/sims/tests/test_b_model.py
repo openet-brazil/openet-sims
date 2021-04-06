@@ -206,9 +206,8 @@ def test_Model_crop_class_constant_value(crop_type, expected):
     ]
 )
 def test_Model_fc_reflectance_type_sr(ndvi, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(reflectance_type='SR').fc(
-            ndvi=ee.Image.constant(ndvi)))
+    m = default_model_obj(reflectance_type='SR')
+    output = utils.constant_image_value(m.fc(ndvi=ee.Image.constant(ndvi)))
     assert abs(output['fc'] - expected) <= tol
 
 
@@ -227,9 +226,8 @@ def test_Model_fc_reflectance_type_sr(ndvi, expected, tol=0.0001):
     ]
 )
 def test_Model_fc_reflectance_type_toa(ndvi, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(reflectance_type='TOA').fc(
-            ndvi=ee.Image.constant(ndvi)))
+    m = default_model_obj(reflectance_type='TOA')
+    output = utils.constant_image_value(m.fc(ndvi=ee.Image.constant(ndvi)))
     assert abs(output['fc'] - expected) <= tol
 
 
@@ -252,9 +250,8 @@ def test_Model_fc_reflectance_type_exception():
     ]
 )
 def test_Model_kc_generic_constant_value(ndvi, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=1).kc_generic(
-            ndvi=ee.Image.constant(ndvi)))
+    m = default_model_obj(crop_type_source=1, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc_generic(ndvi=ee.Image.constant(ndvi)))
     assert abs(output['kc'] - expected) <= tol
 
 
@@ -266,17 +263,15 @@ def test_Model_kc_generic_constant_value(ndvi, expected, tol=0.0001):
     ]
 )
 def test_Model_kc_row_crop_constant_value(fc, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=1).kc_row_crop(
-            fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=1, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc_row_crop(fc=ee.Image.constant(fc)))
     assert abs(output['kc'] - expected) <= tol
 
 
 def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007,
                                       tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=66).kc_tree(
-            fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=66, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc_tree(fc=ee.Image.constant(fc)))
     assert abs(output['kc'] - expected) <= tol
 
 
@@ -294,9 +289,9 @@ def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007,
     ]
 )
 def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=3).kc_rice(
-            fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)))
+    m = default_model_obj(crop_type_source=3, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc_rice(
+        fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)))
     assert abs(output['kc'] - expected) <= tol
 
 
@@ -321,9 +316,8 @@ def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
 )
 def test_Model_kd_row_crop_constant_value(fc, expected, tol=0.0001):
     # m_l for crop_type 1 == 2.0
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=1)._kd_row_crop(
-            fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=1, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m._kd_row_crop(fc=ee.Image.constant(fc)))
     assert abs(output['kd'] - expected) <= tol
 
 
@@ -343,9 +337,8 @@ def test_Model_kd_row_crop_constant_value(fc, expected, tol=0.0001):
     ]
 )
 def test_Model_kd_vine_constant_value(fc, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=69)._kd_vine(
-            fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=69, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m._kd_vine(fc=ee.Image.constant(fc)))
     assert abs(output['kd'] - expected) <= tol
 
 
@@ -363,9 +356,8 @@ def test_Model_kd_vine_constant_value(fc, expected, tol=0.0001):
     ]
 )
 def test_Model_kd_tree_constant_value(fc, expected, tol=0.0001):
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=66)._kd_tree(
-            fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=66, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m._kd_tree(fc=ee.Image.constant(fc)))
     assert abs(output['kd'] - expected) <= tol
 
 
@@ -381,7 +373,7 @@ def test_Model_kd_tree_constant_value(fc, expected, tol=0.0001):
     ]
 )
 def test_Model_kcb_constant_value(kd, doy, h_max, expected, tol=0.0001):
-    m = default_model_obj(doy=doy, crop_type_source=66)
+    m = default_model_obj(crop_type_source=66, doy=doy, crop_type_kc_flag=False)
     m.h_max = ee.Image.constant(h_max)
     m.fr_mid = ee.Image.constant(0.95)
     m.fr_end = ee.Image.constant(0.75)
@@ -394,9 +386,8 @@ def test_Model_kcb_constant_value(kd, doy, h_max, expected, tol=0.0001):
 @pytest.mark.parametrize('crop_type', [0, 1, 69, 66, 3])
 def test_Model_kc_crop_class_constant_value(crop_type):
     # Check that a number is returned for all crop classes
-    output = utils.constant_image_value(
-        default_model_obj(crop_type_source=crop_type).kc(
-            ndvi=ee.Image.constant(0.5)))
+    m = default_model_obj(crop_type_source=crop_type, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(0.5)))
     assert output['kc'] is not None
 
 
@@ -498,6 +489,7 @@ def test_Model_kc_crop_type_kc_clamping(crop_type_source, expected):
     output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(0.95)))
     assert output['kc'] == expected
 
+
 @pytest.mark.parametrize(
     'crop_type, ndvi, water_kc_flag, expected',
     [
@@ -507,12 +499,12 @@ def test_Model_kc_crop_type_kc_clamping(crop_type_source, expected):
     ]
 )
 def test_Model_kc_water_kc_flag(crop_type, ndvi, water_kc_flag, expected):
-    m = default_model_obj(crop_type_source=crop_type,
+    m = default_model_obj(crop_type_source=crop_type, crop_type_kc_flag=False,
                           water_kc_flag=water_kc_flag)
     output = utils.constant_image_value(m.kc(ndvi=ee.Image.constant(ndvi)))
     assert output['kc'] == expected
 
-    
+
 def ndvi_to_kc_point(ndvi, doy, crop_type):
     crop_profile = data.cdl[crop_type]
 
@@ -594,9 +586,9 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
 )
 def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
     ndvi_img = ee.Image.constant(ndvi)
-    mod = default_model_obj(crop_type_kc_flag=True,
-                            crop_type_source=crop_type_num, doy=doy)
-    output = utils.constant_image_value(mod.kc(ndvi_img))
+    m = default_model_obj(crop_type_source=crop_type_num, doy=doy,
+                          crop_type_kc_flag=True)
+    output = utils.constant_image_value(m.kc(ndvi_img))
     expected = ndvi_to_kc_point(ndvi, doy, crop_type_num)
     assert abs(output['kc'] - expected) <= tol
 
@@ -621,9 +613,8 @@ def test_Image_kc_constant_value(ndvi, doy, crop_type_num, tol=0.0001):
     ]
 )
 def test_Model_crop_type_kcb(crop_type, fc, expected, tol=0.0001):
-    model = default_model_obj(crop_type_source=crop_type,
-                              crop_type_kc_flag=True)
-    output = utils.constant_image_value(model._kcb(model._kd_row_crop(
+    m = default_model_obj(crop_type_source=crop_type, crop_type_kc_flag=True)
+    output = utils.constant_image_value(m._kcb(m._kd_row_crop(
         fc=ee.Image.constant(fc))))
     assert abs(output['kcb'] - expected) <= tol
 
@@ -647,8 +638,6 @@ def test_Model_crop_type_kcb(crop_type, fc, expected, tol=0.0001):
     ]
 )
 def test_Model_crop_type_kd(crop_type, fc, expected, tol=0.0001):
-    model = default_model_obj(crop_type_source=crop_type,
-                              crop_type_kc_flag=True)
-    output = utils.constant_image_value(model._kd_row_crop(
-        fc=ee.Image.constant(fc)))
+    m = default_model_obj(crop_type_source=crop_type, crop_type_kc_flag=True)
+    output = utils.constant_image_value(m._kd_row_crop(fc=ee.Image.constant(fc)))
     assert abs(output['kd'] - expected) <= tol
