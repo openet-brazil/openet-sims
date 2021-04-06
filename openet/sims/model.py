@@ -31,11 +31,11 @@ class Model():
             doy,
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
-            crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
+            crop_type_kc_flag=False,
+            crop_type_annual_skip_flag=False,
             mask_non_ag_flag=False,
             water_kc_flag=True,
             reflectance_type='SR',
-            crop_type_annual_skip_flag=False,
         ):
         """Earth Engine based SIMS model object
 
@@ -53,6 +53,11 @@ class Model():
         crop_type_kc_flag : bool, optional
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients. The default is False.
+        crop_type_annual_skip_flag : bool, optional
+            If True, the crop type specific coefficients are NOT used for annual crops.
+            If False, the crop type specific coefficients are used for annual crops.
+            This flag is only applied/used if crop_type_kc_flag is also True.
+            The default is False.
         mask_non_ag_flag : bool, optional
             If True, mask all pixels that don't map to a crop_class.
             The default is False.
@@ -73,9 +78,9 @@ class Model():
         self.crop_type_source = crop_type_source
         self.crop_type_remap = crop_type_remap
         self.crop_type_kc_flag = crop_type_kc_flag
+        self.crop_type_annual_skip_flag = crop_type_annual_skip_flag
         self.mask_non_ag_flag = mask_non_ag_flag
         self.water_kc_flag = water_kc_flag
-        self.crop_type_annual_skip_flag = crop_type_annual_skip_flag
 
         # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
@@ -152,26 +157,25 @@ class Model():
         kc = self.kc_generic(ndvi)
         # kc = fc.multiply(0)
 
-        # Apply crop class specific Kc functions
+        # Apply generic crop class Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
         kc = kc.where(self.crop_class.eq(2),
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
 
-        # Apply crop type specific Kc functions
         if self.crop_type_kc_flag:
+            # Apply crop type specific Kc functions
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
             # The h_max image was built with all non-remapped crop_types as nodata
-            if self.crop_type_annual_skip_flag is False:
+            if not self.crop_type_annual_skip_flag:
                 kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
                               self._kcb(self._kd_row_crop(fc)))
-
-            # do vines like trees
-            kc = kc.where(self.crop_class.eq(2).And((self.h_max.gte(0)),
-                          self._kcb(self._kd_vine(fc)).clamp(0, 1.1)) #Check max value
-
+            # CGM - This seems to be identical to the non crop_type_kc call above
+            #   Is this really needed?
+            kc = kc.where(self.crop_class.eq(2).And(self.h_max.gte(0)),
+                          self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 

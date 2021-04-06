@@ -44,8 +44,12 @@ def default_image_args(ndvi=0.8,
                        et_reference_band='etr',
                        et_reference_factor=0.85,
                        et_reference_resample='nearest',
-                       crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                       crop_type_kc_flag=False, mask_non_ag_flag=False,
+                       crop_type_source='USDA/NASS/CDL',
+                       crop_type_remap='CDL',
+                       crop_type_kc_flag=False,
+                       crop_type_annual_skip_flag=False,
+                       mask_non_ag_flag=False,
+                       water_kc_flag=True,
                        # reflectance_type='SR',
                        ):
     return {
@@ -57,7 +61,9 @@ def default_image_args(ndvi=0.8,
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
+        'crop_type_annual_skip_flag': crop_type_annual_skip_flag,
         'mask_non_ag_flag': mask_non_ag_flag,
+        'water_kc_flag': water_kc_flag,
         # 'reflectance_type': reflectance_type,
     }
 
@@ -67,8 +73,12 @@ def default_image_obj(ndvi=0.8,
                       et_reference_band='etr',
                       et_reference_factor=0.85,
                       et_reference_resample='nearest',
-                      crop_type_source='USDA/NASS/CDL', crop_type_remap='CDL',
-                      crop_type_kc_flag=False, mask_non_ag_flag=False,
+                      crop_type_source='USDA/NASS/CDL',
+                      crop_type_remap='CDL',
+                      crop_type_kc_flag=False,
+                      crop_type_annual_skip_flag=False,
+                      mask_non_ag_flag=False,
+                      water_kc_flag=True,
                       # reflectance_type='SR',
                       ):
     return sims.Image(**default_image_args(
@@ -80,7 +90,9 @@ def default_image_obj(ndvi=0.8,
         crop_type_source=crop_type_source,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,
+        crop_type_annual_skip_flag=crop_type_annual_skip_flag,
         mask_non_ag_flag=mask_non_ag_flag,
+        water_kc_flag=water_kc_flag,
         # reflectance_type=reflectance_type,
     ))
 
@@ -94,6 +106,7 @@ def test_Image_init_default_parameters():
     # assert m.crop_type_source == 'USDA/NASS/CDL'
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
+    # assert m.crop_type_annual_skip_flag == False
     # assert m.mask_non_ag_flag == False
     assert m.reflectance_type == 'SR'
 
