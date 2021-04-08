@@ -43,7 +43,8 @@ class Image():
             image,
             crop_type_source='USDA/NASS/CDL',
             crop_type_remap='CDL',
-            crop_type_kc_flag=False,  # CGM - Not sure what to call this parameter yet
+            crop_type_kc_flag=False,
+            crop_type_annual_skip_flag=False,
             et_reference_source=None,
             et_reference_band=None,
             et_reference_factor=None,
@@ -68,6 +69,11 @@ class Image():
         crop_type_kc_flag : bool, optional
             If True, compute Kc using crop type specific coefficients.
             If False, use generic crop class coefficients.
+            The default is False.
+        crop_type_annual_skip_flag : bool, optional
+            If True, the crop type specific coefficients are NOT used for annual crops.
+            If False, the crop type specific coefficients are used for annual crops.
+            This flag is only applied/used if crop_type_kc_flag is also True.
             The default is False.
         et_reference_source : str, float, optional
             Reference ET source (the default is None).
@@ -146,6 +152,7 @@ class Image():
             crop_type_source=crop_type_source,
             crop_type_remap=crop_type_remap,
             crop_type_kc_flag=crop_type_kc_flag,
+            crop_type_annual_skip_flag=crop_type_annual_skip_flag,
             mask_non_ag_flag=mask_non_ag_flag,
             water_kc_flag=water_kc_flag,
             reflectance_type=reflectance_type,
