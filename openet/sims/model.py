@@ -172,10 +172,7 @@ class Model():
             if not self.crop_type_annual_skip_flag:
                 kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
                               self._kcb(self._kd_row_crop(fc)))
-            # CGM - This seems to be identical to the non crop_type_kc call above
-            #   Is this really needed?
-            kc = kc.where(self.crop_class.eq(2).And(self.h_max.gte(0)),
-                          self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
+
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
