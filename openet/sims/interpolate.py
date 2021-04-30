@@ -35,7 +35,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         interp_days : int, str, optional
             Number of extra days before the start date and after the end date
             to include in the interpolation calculation. The default is 32.
-        water_balance: bool
+        estimate_soil_evaporation: bool
             Compute daily Ke values by simulating water balance in evaporable
             zone. Default is False.
     model_args : dict
@@ -78,10 +78,10 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         logging.debug('interp_days was not set, default to 32')
 
     # Check whether to compute daily Ke
-    if 'water_balance' in interp_args.keys():
-        water_balance = interp_args['water_balance']
+    if 'estimate_soil_evaporation' in interp_args.keys():
+        estimate_soil_evaporation = interp_args['estimate_soil_evaporation']
     else:
-        water_balance = False
+        estimate_soil_evaporation = False
 
     # Check that the input parameters are valid
     if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
@@ -156,30 +156,35 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     #     logging.debug('et_reference_resample was not set, default to nearest')
     #     # raise ValueError('et_reference_resample was not set')
 
-    if type(et_reference_source) is str:
-        # Assume a string source is an single image collection ID
-        #   not an list of collection IDs or ee.ImageCollection
-        daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-            .filterDate(start_date, end_date) \
-            .select([et_reference_band], ['et_reference'])
-    # elif isinstance(et_reference_source, computedobject.ComputedObject):
-    #     # Interpret computed objects as image collections
-    #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-    #         .filterDate(self.start_date, self.end_date) \
-    #         .select([et_reference_band])
+    # check if collection already has et_reference provided
+    # if not, get it from the collection
+    if type(et_reference_source) is str and et_reference_source.lower() == 'provided':
+        daily_et_ref_coll = scene_coll.map(lambda x: x.select('et_reference'))
     else:
-        raise ValueError('unsupported et_reference_source: {}'.format(
-            et_reference_source))
+        if type(et_reference_source) is str:
+            # Assume a string source is an single image collection ID
+            #   not an list of collection IDs or ee.ImageCollection
+            daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
+                .filterDate(start_date, end_date) \
+                .select([et_reference_band], ['et_reference'])
+        # elif isinstance(et_reference_source, computedobject.ComputedObject):
+        #     # Interpret computed objects as image collections
+        #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
+        #         .filterDate(self.start_date, self.end_date) \
+        #         .select([et_reference_band])
+        else:
+            raise ValueError('unsupported et_reference_source: {}'.format(
+                et_reference_source))
 
-    # Scale reference ET images (if necessary)
-    # CGM - Resampling is not working correctly so not including for now
-    if (et_reference_factor and et_reference_factor != 1):
-        def et_reference_adjust(input_img):
-            return input_img.multiply(et_reference_factor) \
-                .copyProperties(input_img) \
-                .set({'system:time_start': input_img.get('system:time_start')})
+        # Scale reference ET images (if necessary)
+        # CGM - Resampling is not working correctly so not including for now
+        if (et_reference_factor and et_reference_factor != 1):
+            def et_reference_adjust(input_img):
+                return input_img.multiply(et_reference_factor) \
+                    .copyProperties(input_img) \
+                    .set({'system:time_start': input_img.get('system:time_start')})
 
-        daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
+            daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
 
     # Initialize variable list to only variables that can be interpolated
     interp_vars = list(set(_interp_vars) & set(variables))
@@ -225,9 +230,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         compute_product=False,
     )
 
-    if water_balance:
-        daily_coll = daily_ke(daily_coll, start_date, end_date,
-                                        model_args, **interp_args)
+    if estimate_soil_evaporation:
+        daily_coll = daily_ke(daily_coll, model_args, **interp_args)
 
     # The interpolate.daily() function can/will return the product of
     # the source and target image named as "{source_band}_1".
@@ -242,12 +246,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     if 'et' in variables or 'et_fraction' in variables:
         def compute_et(img):
             """This function assumes ETr and ETf are present"""
-            if water_balance:
-                et_frac = img.select(['et_fraction'])
-                et_frac = et_frac.where(et_frac.lte(1.15),
-                                        et_frac.add(img.select(['ke'])).clamp(0, 1.15))
-            else:
-                et_frac = img.select(['et_fraction'])
+            et_frac = img.select(['et_fraction'])
             et_img = et_frac.multiply(img.select(['et_reference']))
             return img.addBands(et_img.double().rename('et'))
         daily_coll = daily_coll.map(compute_et)
@@ -402,21 +401,17 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
             agg_start_date=start_date, agg_end_date=end_date,
             date_format='YYYYMMdd'))
 
-def daily_ke(daily_coll, start_date, end_date, model_args,
-                       precip_source='IDAHO_EPSCOR/GRIDMET', precip_band='pr',
-                       fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
-                       fc_band='b1',
-                       wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
-                       wp_band='b1', **kwargs):
+def daily_ke(daily_coll, model_args, precip_source='IDAHO_EPSCOR/GRIDMET',
+             precip_band='pr',
+             fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
+             fc_band='b1',
+             wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
+             wp_band='b1', **kwargs):
     """Compute daily Ke values by simulating evaporable zone water balance 
     Parameters
     ----------
     daily_coll : ee.Image
         Collection of daily Kcb images
-    start_date : str
-        ISO format start date.
-    end_date : str
-        ISO format end date (exclusive, passed directly to .filterDate()).
     model_args : dict
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
@@ -437,14 +432,10 @@ def daily_ke(daily_coll, start_date, end_date, model_args,
 
     Returns
     -------
-    ee.ImageCollectionl
+    ee.ImageCollection
 
     """
 
-    start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-    end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-
-    spinup_start_date = start_dt - datetime.timedelta(days=30)
     field_capacity = ee.Image(fc_source).select(fc_band)
     wilting_point = ee.Image(wp_source).select(wp_band)
 
@@ -565,8 +556,12 @@ def daily_ke(daily_coll, start_date, end_date, model_args,
         # crop coeff (Kcb))
         #etc = kc.multiply(curr_img.select('et_reference')).rename('etc')
 
-        # ETe - bare soil evaporation
+        # ETe - soil evaporation
         ete = ke.multiply(curr_img.select('et_reference')).rename('ete')
+                
+        et_frac = ee.Image(img).select(['et_fraction']) 
+        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke) \
+                             .clamp(0, 1.15)).rename('et_fraction')
 
         # Depletion, FAO 56
         de = prev_img.select('de') \
@@ -615,7 +610,8 @@ def daily_ke(daily_coll, start_date, end_date, model_args,
         # Make image to add to list
         new_day_img = ee.Image(
             curr_img.addBands(
-                ee.Image([de, de_rew, c_eff, ke, kr, ft, de, de_rew, de_prev, ete, curr_precip, ft])
+                ee.Image([de, de_rew, c_eff, ke, kr, ft, de, de_rew, de_prev,
+                          ete, curr_precip, ft, etof]), overwrite=True
             )
         )
 

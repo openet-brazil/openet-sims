@@ -160,7 +160,7 @@ def test_from_scene_et_fraction_monthly_et_reference_resample(tol=0.0001):
     assert abs(output['et']['2017-07-01'] - (232.3 * 0.4)) <= tol
     assert output['count']['2017-07-01'] == 3
 
-def test_water_balance_landsat(tol=0.001):
+def test_soil_evaporation_landsat(tol=0.001):
     TEST_POINT = (-120.201, 36.1696)
     et_reference_source = 'IDAHO_EPSCOR/GRIDMET'
     et_reference_band = 'eto'
@@ -171,16 +171,10 @@ def test_water_balance_landsat(tol=0.001):
         ls_suffix = 'SR' if ls_collection == 1 else 'L2'
 
         ls8_coll_str = f'LANDSAT/LC08/C0{ls_collection}/T1_{ls_suffix}'
-        ls8 = ee.ImageCollection(ls8_coll_str)\
+        ls = ee.ImageCollection(ls8_coll_str)\
                 .filterDate(start_date, end_date)\
                 .filterBounds(ee.Geometry.Point(TEST_POINT))
 
-        ls7_coll_str = f'LANDSAT/LE07/C0{ls_collection}/T1_{ls_suffix}'
-        ls7 = ee.ImageCollection(ls7_coll_str)\
-                .filterDate(start_date, end_date)\
-                .filterBounds(ee.Geometry.Point(TEST_POINT))
-
-        ls = ls7.merge(ls8)
         zero = ls.first().select(1).double().multiply(0)
 
         def make_et_frac(img):
@@ -218,7 +212,7 @@ def test_water_balance_landsat(tol=0.001):
             end_date=end_date,
             variables=['et_reference', 'et_fraction', 'ke', 'et', 'ndvi'],
             interp_args={'interp_method': 'linear', 'interp_days': 14,
-                         'water_balance': True},
+                         'estimate_soil_evaporation': True},
             model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                         'et_reference_band': 'eto',
                         'et_reference_factor': 1.0,
@@ -229,9 +223,10 @@ def test_water_balance_landsat(tol=0.001):
         wb = utils.point_coll_value(wb_coll, TEST_POINT, scale=30)
 
         for date in normal['et'].keys():
+            # check that ET with soil evap >= ET without soil evap
             assert wb['et'][date] >= normal['et'][date]
 
-def test_water_balance_synthetic(tol=0.001):
+def test_soil_evaporation_synthetic(tol=0.001):
     TEST_POINT = (-120.201, 36.1696)
     et_reference_source = 'IDAHO_EPSCOR/GRIDMET'
     et_reference_band = 'eto'
@@ -282,7 +277,7 @@ def test_water_balance_synthetic(tol=0.001):
         end_date=end_date,
         variables=['et_reference', 'et_fraction', 'et', 'ndvi'],
         interp_args={'interp_method': 'linear', 'interp_days': 10},
-        model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
+        model_args={'et_reference_source': 'provided',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.85,
                     'et_reference_resample': 'nearest'},
@@ -294,8 +289,8 @@ def test_water_balance_synthetic(tol=0.001):
         end_date=end_date,
         variables=['et_reference', 'et_fraction', 'ke', 'et', 'ndvi', 'precip'],
         interp_args={'interp_method': 'linear', 'interp_days': 10,
-                     'water_balance': True},
-        model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
+                     'estimate_soil_evaporation': True},
+        model_args={'et_reference_source': 'provided',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.85,
                     'et_reference_resample': 'nearest'},
@@ -304,7 +299,7 @@ def test_water_balance_synthetic(tol=0.001):
     normal = utils.point_coll_value(normal_coll, TEST_POINT, scale=30)
     wb = utils.point_coll_value(wb_coll, TEST_POINT, scale=30)
 
-    # sanity check that wb ET >= regular SIMS ET
+    # check that wb ET >= regular SIMS ET
     for date in normal['et'].keys():
         assert wb['et'][date] >= normal['et'][date]
 
@@ -315,5 +310,12 @@ def test_water_balance_synthetic(tol=0.001):
     wb_df = wb_df.reset_index()
     wb_df['doy'] = wb_df['index'].apply(get_doy)
 
-    for i in range(56, 72):
-        assert abs(wb_df[wb_df.doy==i]['et'].iloc[0] - comp_data[comp_data.doy==i]['etc'].iloc[0]) < tol
+    for i in range(59, 72):
+        try:
+            assert abs(wb_df[wb_df.doy==i]['et'].iloc[0] - comp_data[comp_data.doy==i]['etc'].iloc[0]) < tol
+        except:
+            import ipdb
+            ipdb.set_trace()
+
+ee.Initialize()
+test_soil_evaporation_synthetic()
