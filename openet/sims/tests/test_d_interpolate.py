@@ -316,6 +316,3 @@ def test_soil_evaporation_synthetic(tol=0.001):
         except:
             import ipdb
             ipdb.set_trace()
-
-ee.Initialize()
-test_soil_evaporation_synthetic()
