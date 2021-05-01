@@ -38,6 +38,9 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         estimate_soil_evaporation: bool
             Compute daily Ke values by simulating water balance in evaporable
             zone. Default is False.
+        spinup_days: int
+            Number of days prior to start_date to simulate for starting soil
+            water state. Default is 15 days.
     model_args : dict
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
@@ -82,6 +85,15 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         estimate_soil_evaporation = interp_args['estimate_soil_evaporation']
     else:
         estimate_soil_evaporation = False
+
+    if estimate_soil_evaporation:
+        # Add spinup days, will remove after water balance calculations
+        if 'spinup_days' in interp_args.keys():
+            spinup_days = interp_dargs['spinup_days']
+        else:
+            spinup_days = 0
+
+            interp_days += spinup_days
 
     # Check that the input parameters are valid
     if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
@@ -231,7 +243,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     )
 
     if estimate_soil_evaporation:
-        daily_coll = daily_ke(daily_coll, model_args, **interp_args)
+        daily_coll = daily_ke(daily_coll, model_args, spinup_days,
+                              **interp_args)
 
     # The interpolate.daily() function can/will return the product of
     # the source and target image named as "{source_band}_1".
@@ -401,7 +414,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
             agg_start_date=start_date, agg_end_date=end_date,
             date_format='YYYYMMdd'))
 
-def daily_ke(daily_coll, model_args, precip_source='IDAHO_EPSCOR/GRIDMET',
+def daily_ke(daily_coll, model_args, spinup_days, precip_source='IDAHO_EPSCOR/GRIDMET',
              precip_band='pr',
              fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
              fc_band='b1',
@@ -416,6 +429,9 @@ def daily_ke(daily_coll, model_args, precip_source='IDAHO_EPSCOR/GRIDMET',
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
         reference ET or actual ET.
+    spinup_days : int
+        Number of days prior to start_date to simulate for starting soil
+        water state. Default is 15 days.
     precip_source : str, optional
         GEE data source for gridded precipitation data, default is gridMET.
     precip_band : str, option
@@ -435,6 +451,9 @@ def daily_ke(daily_coll, model_args, precip_source='IDAHO_EPSCOR/GRIDMET',
     ee.ImageCollection
 
     """
+    # First check that ndvi band is present in daily_coll
+    if daily_coll.first().bandNames().indexOf('ndvi').eq(-1).getInfo():
+        raise Exception('Daily collection must have NDVI band to compute soil evaporation')
 
     field_capacity = ee.Image(fc_source).select(fc_band)
     wilting_point = ee.Image(wp_source).select(wp_band)
@@ -617,8 +636,10 @@ def daily_ke(daily_coll, model_args, precip_source='IDAHO_EPSCOR/GRIDMET',
 
         return ee.List(wb_coll).add(new_day_img)
 
+    # Run the water balance calculations
     daily_coll = interp_list.iterate(water_balance_step, init_img_list)
-    # remove dummy first element
+
+    # remove empty first day
     daily_coll = ee.List(daily_coll).slice(1, ee.List(daily_coll).size())
     daily_coll = ee.ImageCollection.fromImages(daily_coll)
 
