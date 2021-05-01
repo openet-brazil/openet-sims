@@ -322,7 +322,7 @@ def test_soil_evaporation_synthetic(synth_test_imgs, tol=0.001):
     for i in range(59, 72):
         assert abs(wb_df[wb_df.doy==i]['et'].iloc[0] - comp_data[comp_data.doy==i]['etc'].iloc[0]) < tol
 
-def test_daily_ke_fails_without_ndvi(synth_test_imgs):
+def test_soil_evap_fails_without_ndvi(synth_test_imgs):
     test_imgs = synth_test_imgs
 
     # daily_ke raises exception if `ndvi` band not present
@@ -343,3 +343,45 @@ def test_daily_ke_fails_without_ndvi(synth_test_imgs):
         assert False
     except:
         pass
+
+def test_daily_ke(synth_test_imgs):
+    test_imgs = synth_test_imgs
+
+    model_args = {'et_reference_source': 'provided',
+                  'et_reference_band': 'eto',
+                  'et_reference_factor': 0.85,
+                  'et_reference_resample': 'nearest'}
+
+    evap_imgs = interpolate.daily_ke(test_imgs, model_args, 0, precip_source='IDAHO_EPSCOR/GRIDMET',
+                         precip_band='pr',
+                         fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
+                         fc_band='b1',
+                         wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
+                         wp_band='b1')
+
+    base_ts = utils.point_coll_value(test_imgs, TEST_POINT, scale=30)
+    base_df = pd.DataFrame(base_ts).reset_index()
+    
+    evap_ts = utils.point_coll_value(evap_imgs, TEST_POINT, scale=30)
+    evap_df = pd.DataFrame(evap_ts).reset_index()
+
+    # Iterate through time series, stop one before end to avoid out of bounds
+    # in "check next day state variable" tests
+    for i in range(evap_df.shape[0]-1):
+        # Check  that soil evap only increase et fraction
+        assert base_df.loc[i, 'et_fraction'] <= evap_df.loc[i, 'et_fraction']
+
+        # Check that etc strictly greater than etcb if it rained and
+        # kcb isn't maxed out
+        if evap_df.loc[i, 'precip'] > 0 and base_df.loc[i, 'et_fraction'] < 1.15:
+            assert base_df.loc[i+1, 'et_fraction'] < evap_df.loc[i+1, 'et_fraction']
+
+        # Check evaporation reduction coefficients
+        # Should be nonzero next day when depletion > REW
+        if evap_df.loc[i, 'de'] > evap_df.de_rew.max():
+            assert evap_df.loc[i+1, 'kr'] < 1
+
+        # should be one next day when depletion is less than REW
+        if evap_df.loc[i, 'de'] < evap_df.de_rew.max():
+            assert evap_df.loc[i+1, 'kr'] == 1
+ 
