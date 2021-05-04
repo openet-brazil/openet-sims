@@ -89,7 +89,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     if estimate_soil_evaporation:
         # Add spinup days, will remove after water balance calculations
         if 'spinup_days' in interp_args.keys():
-            spinup_days = interp_dargs['spinup_days']
+            spinup_days = interp_args['spinup_days']
         else:
             spinup_days = 0
 
