@@ -394,3 +394,7 @@ def test_daily_ke(synth_test_imgs):
         # should be one next day when depletion is less than REW
         if evap_df.loc[i, 'de'] < evap_df.de_rew.max():
             assert evap_df.loc[i+1, 'kr'] == 1
+
+        # should be zero next day when fully depleted
+        if evap_df.loc[i, 'de'] == evap_df.de.max():
+            assert evap_df.loc[i+1, 'kr'] == 0

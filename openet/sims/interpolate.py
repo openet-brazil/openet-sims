@@ -93,8 +93,6 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         else:
             spinup_days = 0
 
-            interp_days += spinup_days
-
     # Check that the input parameters are valid
     if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
         raise ValueError('unsupported t_interval: {}'.format(t_interval))
@@ -134,7 +132,10 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
 
     # The start/end date for the interpolation include more days
     # (+/- interp_days) than are included in the ETr collection
-    interp_start_dt = start_dt - datetime.timedelta(days=interp_days)
+    if estimate_soil_evaporation:
+        interp_start_dt = start_dt - datetime.timedelta(days=interp_days+spinup_days)
+    else:
+        interp_start_dt = start_dt - datetime.timedelta(days=interp_days)
     interp_end_dt = end_dt + datetime.timedelta(days=interp_days)
     interp_start_date = interp_start_dt.date().isoformat()
     interp_end_date = interp_end_dt.date().isoformat()
