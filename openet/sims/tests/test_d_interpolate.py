@@ -1,13 +1,13 @@
+import datetime
 import pprint
 
 import ee
+import pandas as pd
 import pytest
 
 import openet.sims.interpolate as interpolate
 import openet.sims.utils as utils
-from openet.sims.image import Image
-import pandas as pd
-import datetime
+import openet.sims as sims
 
 
 def scene_coll(variables, et_fraction=0.4, et=5, ndvi=0.6):
@@ -160,12 +160,13 @@ def test_from_scene_et_fraction_monthly_et_reference_resample(tol=0.0001):
     assert abs(output['et']['2017-07-01'] - (232.3 * 0.4)) <= tol
     assert output['count']['2017-07-01'] == 3
 
+
 @pytest.mark.parametrize(
-        'landsat_coll_id',
-        [
-            'LANDSAT/LC08/C01/T1_SR',
-            'LANDSAT/LC08/C02/T1_L2',
-        ]
+    'landsat_coll_id',
+    [
+        'LANDSAT/LC08/C01/T1_SR',
+        'LANDSAT/LC08/C02/T1_L2',
+    ]
 )
 def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
     TEST_POINT = (-120.201, 36.1696)
@@ -174,30 +175,29 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
     start_date = '2018-02-23'
     end_date = '2018-03-08'
 
-    ls8_coll_str = landsat_coll_id
-    ls = ee.ImageCollection(ls8_coll_str)\
-            .filterDate(start_date, end_date)\
-            .filterBounds(ee.Geometry.Point(TEST_POINT))
+    landsat_coll = ee.ImageCollection(landsat_coll_id)\
+        .filterDate(start_date, end_date)\
+        .filterBounds(ee.Geometry.Point(TEST_POINT))
 
-    zero = ls.first().select(1).double().multiply(0)
+    zero = landsat_coll.first().select(1).double().multiply(0)
 
     def make_et_frac(img):
         if 'C01' in landsat_coll_id:
-            et_img = Image.from_landsat_c1_sr(img,
-                        et_reference_source=et_reference_source, 
-                        et_reference_band=et_reference_band)\
-                    .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+            et_img = sims.Image.from_landsat_c1_sr(img,
+                    et_reference_source=et_reference_source,
+                    et_reference_band=et_reference_band)\
+                .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
         elif 'C02' in landsat_coll_id:
-            et_img = Image.from_landsat_c2_sr(img,
-                        et_reference_source=et_reference_source, 
-                        et_reference_band=et_reference_band)\
-                    .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+            et_img = sims.Image.from_landsat_c2_sr(img,
+                    et_reference_source=et_reference_source,
+                    et_reference_band=et_reference_band)\
+                .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
 
         time = ee.Number(img.get('system:time_start'))
         et_img = et_img.addBands([zero.add(time).rename('time')])
         return et_img
 
-    test_imgs = ls.map(make_et_frac)
+    test_imgs = landsat_coll.map(make_et_frac)
     normal_coll = interpolate.from_scene_et_fraction(
         test_imgs,
         start_date=start_date,
@@ -230,6 +230,7 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
         # check that ET with soil evap >= ET without soil evap
         assert wb['et'][date] >= normal['et'][date]
 
+
 # Global constants for soil evap tests
 TEST_POINT = (-120.201, 36.1696)
 et_reference_source = 'IDAHO_EPSCOR/GRIDMET'
@@ -240,23 +241,23 @@ comp_data = pd.read_csv('openet/sims/tests/ee_wb_valid.csv')
 
 @pytest.fixture
 def synth_test_imgs():
-    ls8_coll_str = f'LANDSAT/LC08/C01/T1_SR'
-    ls8 = ee.ImageCollection(ls8_coll_str)\
-            .filterDate(start_date, end_date)\
-            .filterBounds(ee.Geometry.Point(TEST_POINT))
+    landsat_coll_id = f'LANDSAT/LC08/C01/T1_SR'
+    landsat_coll = ee.ImageCollection(landsat_coll_id)\
+        .filterDate(start_date, end_date)\
+        .filterBounds(ee.Geometry.Point(TEST_POINT))
 
-    first = ls8.first().select(['B2']).double().multiply(0)
+    first = landsat_coll.first().select(['B2']).double().multiply(0)
     zero = first
 
     first_day = comp_data.iloc[0]
     dt = datetime.datetime(2018, 1, 1) + datetime.timedelta(first_day.doy-1)
     time = ee.Number(ee.Date.fromYMD(2018, dt.month, dt.day).millis())
     first_img = zero.set({'system:time_start': time}) \
-                .addBands([zero.add(time).rename('time')]) \
-                .addBands([zero.add(first_day.ndvi_interp).rename('ndvi')]) \
-                .addBands([zero.add(first_day.kc).rename('et_fraction')]) \
-                .addBands([zero.add(first_day.eto).rename('et_reference')]) \
-                .select(['time', 'ndvi', 'et_fraction', 'et_reference'])
+        .addBands([zero.add(time).rename('time')]) \
+        .addBands([zero.add(first_day.ndvi_interp).rename('ndvi')]) \
+        .addBands([zero.add(first_day.kc).rename('et_fraction')]) \
+        .addBands([zero.add(first_day.eto).rename('et_reference')]) \
+        .select(['time', 'ndvi', 'et_fraction', 'et_reference'])
 
     test_imgs = ee.ImageCollection(first_img)
 
@@ -268,14 +269,15 @@ def synth_test_imgs():
         dt = datetime.datetime(2018, 1, 1) + datetime.timedelta(doy-1)
         time = ee.Number(ee.Date.fromYMD(2018, dt.month, dt.day).millis())
         next_img = zero.set({'system:time_start': time}) \
-                    .addBands([zero.add(time).rename('time')]) \
-                    .addBands([zero.add(day.ndvi_interp).rename('ndvi')]) \
-                    .addBands([zero.add(day.kc).rename('et_fraction')]) \
-                    .addBands([zero.add(day.eto).rename('et_reference')]) \
-                    .select(['time', 'ndvi', 'et_fraction', 'et_reference'])
+            .addBands([zero.add(time).rename('time')]) \
+            .addBands([zero.add(day.ndvi_interp).rename('ndvi')]) \
+            .addBands([zero.add(day.kc).rename('et_fraction')]) \
+            .addBands([zero.add(day.eto).rename('et_reference')]) \
+            .select(['time', 'ndvi', 'et_fraction', 'et_reference'])
         test_imgs = test_imgs.merge(ee.ImageCollection(next_img))
     
     return test_imgs
+
 
 def test_soil_evaporation_synthetic(synth_test_imgs, tol=0.001):
     test_imgs = synth_test_imgs
@@ -290,7 +292,8 @@ def test_soil_evaporation_synthetic(synth_test_imgs, tol=0.001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.85,
                     'et_reference_resample': 'nearest'},
-        t_interval='daily')
+        t_interval='daily',
+    )
 
     wb_coll = interpolate.from_scene_et_fraction(
         test_imgs,
@@ -303,7 +306,8 @@ def test_soil_evaporation_synthetic(synth_test_imgs, tol=0.001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.85,
                     'et_reference_resample': 'nearest'},
-        t_interval='daily')
+        t_interval='daily',
+    )
 
     normal = utils.point_coll_value(normal_coll, TEST_POINT, scale=30)
     wb = utils.point_coll_value(wb_coll, TEST_POINT, scale=30)
@@ -321,6 +325,7 @@ def test_soil_evaporation_synthetic(synth_test_imgs, tol=0.001):
 
     for i in range(59, 72):
         assert abs(wb_df[wb_df.doy==i]['et'].iloc[0] - comp_data[comp_data.doy==i]['etc'].iloc[0]) < tol
+
 
 def test_soil_evap_fails_without_ndvi(synth_test_imgs):
     test_imgs = synth_test_imgs
@@ -344,6 +349,7 @@ def test_soil_evap_fails_without_ndvi(synth_test_imgs):
     except:
         pass
 
+
 def test_daily_ke(synth_test_imgs):
     test_imgs = synth_test_imgs
 
@@ -352,12 +358,16 @@ def test_daily_ke(synth_test_imgs):
                   'et_reference_factor': 0.85,
                   'et_reference_resample': 'nearest'}
 
-    evap_imgs = interpolate.daily_ke(test_imgs, model_args, 0, precip_source='IDAHO_EPSCOR/GRIDMET',
-                         precip_band='pr',
-                         fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
-                         fc_band='b1',
-                         wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
-                         wp_band='b1')
+    evap_imgs = interpolate.daily_ke(
+        test_imgs,
+        model_args,  # CGM - model_args isn't used by daily_ke
+        precip_source='IDAHO_EPSCOR/GRIDMET',
+        precip_band='pr',
+        fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
+        fc_band='b1',
+        wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
+        wp_band='b1',
+    )
 
     base_ts = utils.point_coll_value(test_imgs, TEST_POINT, scale=30)
     base_df = pd.DataFrame(base_ts).reset_index()
@@ -384,4 +394,3 @@ def test_daily_ke(synth_test_imgs):
         # should be one next day when depletion is less than REW
         if evap_df.loc[i, 'de'] < evap_df.de_rew.max():
             assert evap_df.loc[i+1, 'kr'] == 1
- 

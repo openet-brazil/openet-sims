@@ -172,31 +172,30 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     # if not, get it from the collection
     if type(et_reference_source) is str and et_reference_source.lower() == 'provided':
         daily_et_ref_coll = scene_coll.map(lambda x: x.select('et_reference'))
+    elif type(et_reference_source) is str:
+        # Assume a string source is an single image collection ID
+        #   not an list of collection IDs or ee.ImageCollection
+        daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
+            .filterDate(start_date, end_date) \
+            .select([et_reference_band], ['et_reference'])
+    # elif isinstance(et_reference_source, computedobject.ComputedObject):
+    #     # Interpret computed objects as image collections
+    #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
+    #         .filterDate(self.start_date, self.end_date) \
+    #         .select([et_reference_band])
     else:
-        if type(et_reference_source) is str:
-            # Assume a string source is an single image collection ID
-            #   not an list of collection IDs or ee.ImageCollection
-            daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-                .filterDate(start_date, end_date) \
-                .select([et_reference_band], ['et_reference'])
-        # elif isinstance(et_reference_source, computedobject.ComputedObject):
-        #     # Interpret computed objects as image collections
-        #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-        #         .filterDate(self.start_date, self.end_date) \
-        #         .select([et_reference_band])
-        else:
-            raise ValueError('unsupported et_reference_source: {}'.format(
-                et_reference_source))
+        raise ValueError('unsupported et_reference_source: {}'.format(
+            et_reference_source))
 
-        # Scale reference ET images (if necessary)
-        # CGM - Resampling is not working correctly so not including for now
-        if (et_reference_factor and et_reference_factor != 1):
-            def et_reference_adjust(input_img):
-                return input_img.multiply(et_reference_factor) \
-                    .copyProperties(input_img) \
-                    .set({'system:time_start': input_img.get('system:time_start')})
+    # Scale reference ET images (if necessary)
+    # CGM - Resampling is not working correctly so not including for now
+    if (et_reference_factor and et_reference_factor != 1):
+        def et_reference_adjust(input_img):
+            return input_img.multiply(et_reference_factor) \
+                .copyProperties(input_img) \
+                .set({'system:time_start': input_img.get('system:time_start')})
 
-            daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
+        daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
 
     # Initialize variable list to only variables that can be interpolated
     interp_vars = list(set(_interp_vars) & set(variables))
@@ -243,8 +242,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     )
 
     if estimate_soil_evaporation:
-        daily_coll = daily_ke(daily_coll, model_args, spinup_days,
-                              **interp_args)
+        daily_coll = daily_ke(daily_coll, model_args, **interp_args)
 
     # The interpolate.daily() function can/will return the product of
     # the source and target image named as "{source_band}_1".
@@ -414,13 +412,17 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
             agg_start_date=start_date, agg_end_date=end_date,
             date_format='YYYYMMdd'))
 
-def daily_ke(daily_coll, model_args, spinup_days, precip_source='IDAHO_EPSCOR/GRIDMET',
+
+def daily_ke(daily_coll,
+             model_args,  # CGM - This parameter isn't used
+             precip_source='IDAHO_EPSCOR/GRIDMET',
              precip_band='pr',
              fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
              fc_band='b1',
              wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
              wp_band='b1', **kwargs):
-    """Compute daily Ke values by simulating evaporable zone water balance 
+    """Compute daily Ke values by simulating evaporable zone water balance
+
     Parameters
     ----------
     daily_coll : ee.Image
@@ -429,9 +431,6 @@ def daily_ke(daily_coll, model_args, spinup_days, precip_source='IDAHO_EPSCOR/GR
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
         reference ET or actual ET.
-    spinup_days : int
-        Number of days prior to start_date to simulate for starting soil
-        water state. Default is 15 days.
     precip_source : str, optional
         GEE data source for gridded precipitation data, default is gridMET.
     precip_band : str, option
@@ -467,7 +466,7 @@ def daily_ke(daily_coll, model_args, spinup_days, precip_source='IDAHO_EPSCOR/GR
 
     # Depth of evaporable zone
     # Set to 10 cm
-    z_e = .1
+    z_e = 0.1
 
     # Total evaporable water (mm)
     # Allen et al. 1998 eqn 73
