@@ -9,8 +9,6 @@ import openet.sims.interpolate as interpolate
 import openet.sims.utils as utils
 import openet.sims as sims
 
-pd.set_option('display.expand_frame_repr', False)
-
 
 def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5],
                ndvi=[0.6, 0.6, 0.6]):
@@ -79,11 +77,11 @@ def test_from_scene_et_fraction_daily_values(tol=0.0001):
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
     assert abs(output['ndvi']['2017-07-01'] - 0.2) <= tol
     assert abs(output['ndvi']['2017-07-08'] - 0.2) <= tol
+    assert abs(output['ndvi']['2017-07-10'] - 0.25) <= tol
     assert abs(output['ndvi']['2017-07-12'] - 0.3) <= tol
     assert abs(output['ndvi']['2017-07-16'] - 0.4) <= tol
     assert abs(output['ndvi']['2017-07-24'] - 0.6) <= tol
     assert abs(output['ndvi']['2017-07-31'] - 0.6) <= tol
-    # assert abs(output['ndvi']['2017-07-10'] - 0.6) <= tol
     assert abs(output['et_fraction']['2017-07-10'] - 0.4) <= tol
     assert abs(output['et_reference']['2017-07-10'] - 8.0) <= tol
     assert abs(output['et']['2017-07-10'] - (8.0 * 0.4)) <= tol
@@ -398,7 +396,7 @@ def test_soil_evaporation_synthetic(synth_test_imgs, synth_precip_imgs, tol=0.00
         interp_args={'interp_method': 'linear', 'interp_days': 10,
                      'estimate_soil_evaporation': True,
                      'precip_source': synth_precip_imgs,
-                     'precip_band': 'pr',},
+                     'precip_band': 'pr'},
         model_args={'et_reference_source': 'provided',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
