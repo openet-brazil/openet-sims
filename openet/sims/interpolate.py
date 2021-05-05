@@ -437,11 +437,11 @@ def daily_ke(daily_coll,
     precip_band : str, option
         GEE Image band that contains gridded precipitaiton data, default is
         'pr', which is the band for gridMET.
-    fc_source : ee.Image
+    fc_source : str, ee.Image
         GEE Image of soil field capacity values
     fc_band : str 
         Name of the band in `fc_source` that contains field capacity values
-    wp_source : ee.Image
+    wp_source : str, ee.Image
         GEE Image of soil permanent wilting point values
     wp_band : str 
         Name of the band in `wp_source` that contains wilting point values
@@ -526,11 +526,19 @@ def daily_ke(daily_coll,
         curr_img = ee.Image(img)
 
         # Make precip image with bands for today and tomorrow
+        # CGM - The current image is selected by filtering to the previous day
+        #   since the Landsat image time is ~18 UTC but the precip start time
+        #   is likely 0 UTC or 6 UTC (for GRIDMET)
+        # CGM the
         curr_date = curr_img.date()
-        curr_precip = ee.Image(daily_pr_coll
-            .filterDate(curr_date, curr_date.advance(1, 'day')).first()).rename('precip')
-        next_precip = ee.Image(daily_pr_coll
-            .filterDate(curr_date.advance(1, 'day'), curr_date.advance(2, 'day')).first())
+        curr_precip = ee.Image(
+            daily_pr_coll.filterDate(curr_date.advance(-1, 'day'), curr_date).first())
+        next_precip = ee.Image(
+            daily_pr_coll.filterDate(curr_date, curr_date.advance(1, 'day')).first())
+        # curr_precip = ee.Image(daily_pr_coll
+        #     .filterDate(curr_date, curr_date.advance(1, 'day')).first()).rename('precip')
+        # next_precip = ee.Image(daily_pr_coll
+        #     .filterDate(curr_date.advance(1, 'day'), curr_date.advance(2, 'day')).first())
         precip_img = ee.Image([curr_precip, next_precip]) \
             .rename(['current', 'next'])
 
@@ -577,10 +585,12 @@ def daily_ke(daily_coll,
 
         # ETe - soil evaporation
         ete = ke.multiply(curr_img.select('et_reference')).rename('ete')
-                
+
+        # CGM - Why not just add ke to et_frac and clamp the result?
+        #   What does the extra .where call do?
         et_frac = ee.Image(img).select(['et_fraction']) 
-        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke) \
-                             .clamp(0, 1.15)).rename('et_fraction')
+        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke).clamp(0, 1.15))\
+            .rename('et_fraction')
 
         # Depletion, FAO 56
         de = prev_img.select('de') \
@@ -627,10 +637,13 @@ def daily_ke(daily_coll,
             .select([0], ['c_eff'])
 
         # Make image to add to list
+        # CGM - I removed the duplicate de, de_rew, and ft bands
+        #   Are they needed?
         new_day_img = ee.Image(
             curr_img.addBands(
-                ee.Image([de, de_rew, c_eff, ke, kr, ft, de, de_rew, de_prev,
-                          ete, curr_precip, ft, etof]), overwrite=True
+                ee.Image([de, de_rew, c_eff, ke, kr, ft, de_prev, ete,
+                          precip_img.select(['current'], ['precip']), etof]),
+                overwrite=True
             )
         )
 
