@@ -213,6 +213,10 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     # The time band is always needed for interpolation
     interp_vars.append('time')
 
+    # The NDVI band is always needed for the soil water balance
+    if estimate_soil_evaporation and 'ndvi' not in interp_vars:
+        interp_vars.append('ndvi')
+
     # Filter scene collection to the interpolation range
     # This probably isn't needed since scene_coll was built to this range
     scene_coll = scene_coll.filterDate(interp_start_date, interp_end_date)
