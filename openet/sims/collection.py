@@ -278,6 +278,14 @@ class Collection():
                         if filter_type.lower() == 'equals':
                             input_coll = input_coll.filter(ee.Filter.equals(**f))
 
+                # Time filters are to remove bad (L5) and pre-op (L8) images
+                if 'LT05' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.lt(
+                        'system:time_start', ee.Date('2011-12-31').millis()))
+                elif 'LC08' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.gt(
+                        'system:time_start', ee.Date('2013-04-01').millis()))
+
                 def compute_lsr(image):
                     model_obj = Image.from_landsat_c2_sr(
                         sr_image=ee.Image(image), **self.model_args)
@@ -303,6 +311,14 @@ class Collection():
                             continue
                         if filter_type.lower() == 'equals':
                             input_coll = input_coll.filter(ee.Filter.equals(**f))
+
+                # Time filters are to remove bad (L5) and pre-op (L8) images
+                if 'LT05' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.lt(
+                        'system:time_start', ee.Date('2011-12-31').millis()))
+                elif 'LC08' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.gt(
+                        'system:time_start', ee.Date('2013-04-01').millis()))
 
                 def compute_lsr(image):
                     model_obj = Image.from_landsat_c1_sr(
