@@ -94,10 +94,9 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
 
     # Check that the input parameters are valid
     if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
-        raise ValueError('unsupported t_interval: {}'.format(t_interval))
+        raise ValueError(f'unsupported t_interval: {t_interval}')
     elif interp_method.lower() not in ['linear']:
-        raise ValueError('unsupported interp_method: {}'.format(
-            interp_method))
+        raise ValueError(f'unsupported interp_method: {interp_method}')
 
     if ((type(interp_days) is str or type(interp_days) is float) and
             utils.is_number(interp_days)):
@@ -184,8 +183,7 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     #         .filterDate(self.start_date, self.end_date) \
     #         .select([et_reference_band])
     else:
-        raise ValueError('unsupported et_reference_source: {}'.format(
-            et_reference_source))
+        raise ValueError(f'unsupported et_reference_source: {et_reference_source}')
 
     # Scale reference ET images (if necessary)
     # CGM - Resampling is not working correctly so not including for now

@@ -304,8 +304,7 @@ class Model():
         # elif isinstance(self.crop_type_source, computedobject.ComputedObject):
 
         else:
-            raise ValueError('unsupported crop_type_source: {}'.format(
-                self.crop_type_source))
+            raise ValueError(f'unsupported crop_type_source: {self.crop_type_source}')
 
         # Should the image properties be set onto the image also?
         return crop_type_img.rename(['crop_type']).set(properties)
@@ -333,8 +332,7 @@ class Model():
         if self.crop_type_remap.upper() == 'CDL':
             return data.cdl
         else:
-            raise ValueError('unsupported crop_type_remap: "{}"'.format(
-                self.crop_type_remap))
+            raise ValueError(f'unsupported crop_type_remap: "{self.crop_type_remap}"')
 
     def kc_generic(self, ndvi):
         """Generic crop coefficient based on linear function of NDVI

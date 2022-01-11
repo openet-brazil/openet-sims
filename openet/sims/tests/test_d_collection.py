@@ -12,6 +12,8 @@ import openet.sims.utils as utils
 COLLECTIONS = ['LANDSAT/LC08/C01/T1_SR', 'LANDSAT/LE07/C01/T1_SR']
 SCENE_ID_LIST = sorted(['LC08_044033_20170716', 'LE07_044033_20170708',
                         'LE07_044033_20170724'])
+# Image LE07_044033_20170724 is not (yet?) in LANDSAT/LE07/C02/T1_L2
+C02_SCENE_ID_LIST = ['LC08_044033_20170716', 'LE07_044033_20170708']
 START_DATE = '2017-07-01'
 END_DATE = '2017-08-01'
 SCENE_GEOM = (-121.91, 38.99, -121.89, 39.01)
@@ -86,7 +88,15 @@ def test_Collection_init_cloud_cover_max_str():
         ['LANDSAT/LT05/C01/T1_SR', '1983-01-01', '1984-01-01'],
         ['LANDSAT/LT05/C01/T1_SR', '2012-01-01', '2013-01-01'],
         ['LANDSAT/LE07/C01/T1_SR', '1998-01-01', '1999-01-01'],
+        ['LANDSAT/LE07/C01/T1_SR', '2022-01-01', '2023-01-01'],
         ['LANDSAT/LC08/C01/T1_SR', '2012-01-01', '2013-01-01'],
+        ['LANDSAT/LT04/C02/T1_L2', '1981-01-01', '1982-01-01'],
+        ['LANDSAT/LT04/C02/T1_L2', '1994-01-01', '1995-01-01'],
+        ['LANDSAT/LT05/C02/T1_L2', '1983-01-01', '1984-01-01'],
+        ['LANDSAT/LT05/C02/T1_L2', '2012-01-01', '2013-01-01'],
+        ['LANDSAT/LE07/C02/T1_L2', '1998-01-01', '1999-01-01'],
+        ['LANDSAT/LE07/C02/T1_L2', '2022-01-01', '2023-01-01'],
+        ['LANDSAT/LC08/C02/T1_L2', '2012-01-01', '2013-01-01'],
     ]
 )
 def test_Collection_init_collection_filter(coll_id, start_date, end_date):
@@ -180,14 +190,13 @@ def test_Collection_build_landsat_c1_sr():
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
 
 
-# CGM - This test should work once the collection 2 collections are fully built
-# def test_Collection_build_landsat_c2_sr():
-#     """Test if the Landsat SR collections can be built"""
-#     coll_obj = default_coll_obj(
-#         collections=['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2'])
-#     output = utils.getinfo(coll_obj._build())
-#     assert parse_scene_id(output) == SCENE_ID_LIST
-#     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
+def test_Collection_build_landsat_c2_sr():
+    """Test if the Landsat SR collections can be built"""
+    coll_obj = default_coll_obj(
+        collections=['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2'])
+    output = utils.getinfo(coll_obj._build())
+    assert parse_scene_id(output) == C02_SCENE_ID_LIST
+    assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
 
 
 # CGM - Non Landsat SR collections not currently supported

@@ -21,7 +21,7 @@ def test_cdl_dict():
 @pytest.mark.parametrize('year', [2019])
 def test_cdl_crop_types(year):
     output = list(map(round, utils.getinfo(
-        ee.Image('USDA/NASS/CDL/{}'.format(year)).get('cropland_class_values'))))
+        ee.Image(f'USDA/NASS/CDL/{year}').get('cropland_class_values'))))
     for crop_type, crop_data in data.cdl.items():
         # Crop type 78 is non-standard CDL code being used for Grapes (table/raisin)
         if crop_type == 78:

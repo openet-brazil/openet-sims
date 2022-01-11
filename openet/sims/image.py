@@ -193,7 +193,7 @@ class Image():
             elif v.lower() == 'time':
                 output_images.append(self.time)
             else:
-                raise ValueError('unsupported variable: {}'.format(v))
+                raise ValueError(f'unsupported variable: {v}')
 
         return ee.Image(output_images).set(self._properties)
 
@@ -238,8 +238,8 @@ class Image():
             if self.et_reference_resample in ['bilinear', 'bicubic']:
                 et_reference_img = et_reference_img.resample(self.et_reference_resample)
         else:
-            raise ValueError('unsupported et_reference_source: {}'.format(
-                self.et_reference_source))
+            raise ValueError(f'unsupported et_reference_source: '
+                             f'{self.et_reference_source}')
 
         if self.et_reference_factor:
             et_reference_img = et_reference_img.multiply(self.et_reference_factor)
@@ -397,9 +397,9 @@ class Image():
         try:
             method_name = collection_methods[image_id.rsplit('/', 1)[0]]
         except KeyError:
-            raise ValueError('unsupported collection ID: {}'.format(image_id))
+            raise ValueError(f'unsupported collection ID: {image_id}')
         except Exception as e:
-            raise Exception('unhandled exception: {}'.format(e))
+            raise Exception(f'unhandled exception: {e}')
 
         method = getattr(Image, method_name)
 

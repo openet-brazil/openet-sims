@@ -17,7 +17,7 @@ DOY = 197
 # CGM - Setting default crop_type_source to 2017 image to simplify testing
 #   but the default in the Model class init is the full collection
 def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
-                       crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
+                       crop_type_source=f'USDA/NASS/CDL/{YEAR}',
                        crop_type_kc_flag=False,
                        crop_type_annual_skip_flag=False,
                        mask_non_ag_flag=False,
@@ -37,7 +37,7 @@ def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
 
 
 def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
-                      crop_type_source='USDA/NASS/CDL/{}'.format(YEAR),
+                      crop_type_source=f'USDA/NASS/CDL/{YEAR}',
                       crop_type_kc_flag=False,
                       crop_type_annual_skip_flag=False,
                       mask_non_ag_flag=False,
@@ -91,7 +91,7 @@ def test_crop_data_image_default_nodata():
 
 def test_Model_init_default_parameters():
     m = default_model_obj()
-    assert m.crop_type_source == 'USDA/NASS/CDL/{}'.format(YEAR)
+    assert m.crop_type_source == f'USDA/NASS/CDL/{YEAR}'
     assert m.crop_type_remap == 'CDL'
     assert m.reflectance_type == 'SR'
 
@@ -122,7 +122,7 @@ def test_Model_crop_type_source_cdl_collection(year, expected):
     """
     output = utils.getinfo(default_model_obj(
         crop_type_source='USDA/NASS/CDL', year=ee.Number(year)).crop_type)
-    assert output['properties']['id'] == 'USDA/NASS/CDL/{}'.format(expected)
+    assert output['properties']['id'] == f'USDA/NASS/CDL/{expected}'
 
 
 def test_Model_crop_type_source_cdl_image():

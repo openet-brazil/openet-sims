@@ -171,8 +171,7 @@ class Collection():
             if (coll_id not in self._landsat_c2_sr_collections and
                     coll_id not in self._landsat_c1_toa_collections and
                     coll_id not in self._landsat_c1_sr_collections):
-                raise ValueError(
-                    'unsupported collection: {}'.format(coll_id))
+                raise ValueError(f'unsupported collection: {coll_id}')
 
         # CGM - This test is not needed since only Landsat SR collections are supported
         # # Check that collections don't have "duplicates"
@@ -375,7 +374,7 @@ class Collection():
                     ee.ImageCollection(input_coll.map(compute_ltoa)))
 
             else:
-                raise ValueError('unsupported collection: {}'.format(coll_id))
+                raise ValueError(f'unsupported collection: {coll_id}')
 
         return variable_coll
 
@@ -446,10 +445,9 @@ class Collection():
         """
         # Check that the input parameters are valid
         if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
-            raise ValueError('unsupported t_interval: {}'.format(t_interval))
+            raise ValueError(f'unsupported t_interval: {t_interval}')
         elif interp_method.lower() not in ['linear']:
-            raise ValueError('unsupported interp_method: {}'.format(
-                interp_method))
+            raise ValueError(f'unsupported interp_method: {interp_method}')
 
         if type(interp_days) is str and utils.is_number(interp_days):
             interp_days = int(interp_days)
@@ -512,9 +510,9 @@ class Collection():
         for et_reference_param in ['et_reference_source', 'et_reference_band',
                                    'et_reference_factor']:
             if et_reference_param not in self.model_args.keys():
-                raise ValueError('{} was not set'.format(et_reference_param))
+                raise ValueError(f'{et_reference_param} was not set')
             elif not self.model_args[et_reference_param]:
-                raise ValueError('{} was not set'.format(et_reference_param))
+                raise ValueError(f'{et_reference_param} was not set')
 
         if type(self.model_args['et_reference_source']) is str:
             # Assume a string source is an single image collection ID
@@ -529,8 +527,8 @@ class Collection():
         #         .filterDate(self.start_date, self.end_date) \
         #         .select([self.model_args['et_reference_band']])
         else:
-            raise ValueError('unsupported et_reference_source: {}'.format(
-                self.model_args['et_reference_source']))
+            raise ValueError('unsupported et_reference_source: '
+                             '{self.model_args["et_reference_source"]}')
 
         # Scale reference ET images (if necessary)
         # CGM - Resampling is not working correctly so not including for now
