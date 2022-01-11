@@ -418,7 +418,8 @@ class Collection():
             instantiation call.
         t_interval : {'daily', 'monthly', 'annual', 'custom'}, optional
             Time interval over which to interpolate and aggregate values
-            (the default is 'monthly').
+            The default 'custom' interval will aggregate all days within the
+            start/end dates and return an image collection with a single image.
         interp_method : {'linear}, optional
             Interpolation method (the default is 'linear').
         interp_days : int, str, optional
