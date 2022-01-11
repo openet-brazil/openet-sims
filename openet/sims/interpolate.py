@@ -12,8 +12,7 @@ from . import utils
 
 
 def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
-                           interp_args, model_args, t_interval='custom',
-                           use_joins=False,
+                           interp_args, model_args, t_interval, use_joins=False,
                            _interp_vars=['et_fraction', 'ndvi']):
     """Interpolate from a precomputed collection of Landast ET fraction scenes
 
@@ -45,10 +44,10 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
         reference ET or actual ET.
-    t_interval : {'daily', 'monthly', 'annual', 'custom'}, optional
+    t_interval : {'daily', 'monthly', 'annual', 'custom'}
         Time interval over which to interpolate and aggregate values
-        The default is 'custom' which means the aggregation time period
-        will be controlled by the start and end date parameters.
+        The 'custom' interval will aggregate all days within the start and end
+        dates into an image collection with a single image.
     use_joins : bool, optional
         If True, use joins to link the target and source collections.
         If False, the source collection will be filtered for each target image.
