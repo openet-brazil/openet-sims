@@ -282,6 +282,9 @@ class Collection():
                 if 'LT05' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.lt(
                         'system:time_start', ee.Date('2011-12-31').millis()))
+                elif 'LE07' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.lt(
+                        'system:time_start', ee.Date('2022-01-01').millis()))
                 elif 'LC08' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
@@ -316,6 +319,9 @@ class Collection():
                 if 'LT05' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.lt(
                         'system:time_start', ee.Date('2011-12-31').millis()))
+                elif 'LE07' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.lt(
+                        'system:time_start', ee.Date('2022-01-01').millis()))
                 elif 'LC08' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
@@ -351,6 +357,9 @@ class Collection():
                 if 'LT05' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.lt(
                         'system:time_start', ee.Date('2011-12-31').millis()))
+                elif 'LE07' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.lt(
+                        'system:time_start', ee.Date('2022-01-01').millis()))
                 elif 'LC08' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
