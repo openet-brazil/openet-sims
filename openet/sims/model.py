@@ -176,6 +176,9 @@ class Model():
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
+            kc = kc.where(kc.gte(0.2), kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
+                          self._kcb(self._kd_tree(fc), 0.5).clamp(0, 1.2)))
+
         # CGM - Is it okay to apply this after all the other Kc functions?
         #   Should we only apply this to non-ag crop classes?
         if self.water_kc_flag:
