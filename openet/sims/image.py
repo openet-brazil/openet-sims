@@ -388,6 +388,7 @@ class Image():
             'LANDSAT/LT04/C01/T1_TOA': 'from_landsat_c1_toa',
             'LANDSAT/LC08/C01/T1_RT_TOA': 'from_landsat_c1_toa',
             'LANDSAT/LE07/C01/T1_RT_TOA': 'from_landsat_c1_toa',
+            'LANDSAT/LC09/C02/T1_L2': 'from_landsat_c2_sr',
             'LANDSAT/LC08/C02/T1_L2': 'from_landsat_c2_sr',
             'LANDSAT/LE07/C02/T1_L2': 'from_landsat_c2_sr',
             'LANDSAT/LT05/C02/T1_L2': 'from_landsat_c2_sr',
@@ -519,7 +520,7 @@ class Image():
 
     @classmethod
     def from_landsat_c2_sr(cls, sr_image, cloudmask_args={}, **kwargs):
-        """Construct a SIMS Image instance from a Landsat SR image
+        """Construct a SIMS Image instance from a Landsat C02 SR image
 
         Parameters
         ----------
@@ -554,6 +555,8 @@ class Image():
             'LANDSAT_7': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7',
                           'ST_B6', 'QA_PIXEL'],
             'LANDSAT_8': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
+                          'ST_B10', 'QA_PIXEL'],
+            'LANDSAT_9': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
                           'ST_B10', 'QA_PIXEL'],
         })
         output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2',

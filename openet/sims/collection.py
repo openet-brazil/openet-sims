@@ -142,6 +142,7 @@ class Collection():
         self._interp_vars = ['ndvi', 'et_fraction']
 
         self._landsat_c2_sr_collections = [
+            'LANDSAT/LC09/C02/T1_L2',
             'LANDSAT/LC08/C02/T1_L2',
             'LANDSAT/LE07/C02/T1_L2',
             'LANDSAT/LT05/C02/T1_L2',
@@ -215,10 +216,12 @@ class Collection():
             self.collections = [c for c in self.collections if 'LT05' not in c]
         if self.end_date <= '1999-01-01':
             self.collections = [c for c in self.collections if 'LE07' not in c]
-        if self.end_date >= '2022-01-01':
+        if self.start_date >= '2022-01-01':
             self.collections = [c for c in self.collections if 'LE07' not in c]
         if self.end_date <= '2013-01-01':
             self.collections = [c for c in self.collections if 'LC08' not in c]
+        if self.end_date <= '2021-11-01':
+            self.collections = [c for c in self.collections if 'LC09' not in c]
         # if self.end_date <= '2015-01-01':
         #     self.collections = [c for c in self.collections if 'COPERNICUS' not in c]
 
@@ -289,6 +292,9 @@ class Collection():
                 elif 'LC08' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
+                elif 'LC09' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.gt(
+                        'system:time_start', ee.Date('2022-01-01').millis()))
 
                 def compute_lsr(image):
                     model_obj = Image.from_landsat_c2_sr(
