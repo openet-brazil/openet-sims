@@ -113,7 +113,8 @@ def test_Model_init_crop_data_images(parameter):
         # [2018, 2018],
         [2019, 2019],
         [2020, 2020],
-        [2021, 2020],
+        [2021, 2021],
+        [2022, 2021],
     ]
 )
 def test_Model_crop_type_source_cdl_collection(year, expected):

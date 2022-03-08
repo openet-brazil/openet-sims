@@ -142,24 +142,25 @@ class Collection():
         self._interp_vars = ['ndvi', 'et_fraction']
 
         self._landsat_c2_sr_collections = [
-            'LANDSAT/LC08/C02/T1_L2',
-            'LANDSAT/LE07/C02/T1_L2',
-            'LANDSAT/LT05/C02/T1_L2',
             'LANDSAT/LT04/C02/T1_L2',
+            'LANDSAT/LT05/C02/T1_L2',
+            'LANDSAT/LE07/C02/T1_L2',
+            'LANDSAT/LC08/C02/T1_L2',
+            'LANDSAT/LC09/C02/T1_L2',
         ]
         self._landsat_c1_sr_collections = [
-            'LANDSAT/LC08/C01/T1_SR',
-            'LANDSAT/LE07/C01/T1_SR',
-            'LANDSAT/LT05/C01/T1_SR',
             'LANDSAT/LT04/C01/T1_SR',
+            'LANDSAT/LT05/C01/T1_SR',
+            'LANDSAT/LE07/C01/T1_SR',
+            'LANDSAT/LC08/C01/T1_SR',
         ]
         self._landsat_c1_toa_collections = [
-            'LANDSAT/LC08/C01/T1_RT_TOA',
-            'LANDSAT/LE07/C01/T1_RT_TOA',
-            'LANDSAT/LC08/C01/T1_TOA',
-            'LANDSAT/LE07/C01/T1_TOA',
-            'LANDSAT/LT05/C01/T1_TOA',
             'LANDSAT/LT04/C01/T1_TOA',
+            'LANDSAT/LT05/C01/T1_TOA',
+            'LANDSAT/LE07/C01/T1_TOA',
+            'LANDSAT/LC08/C01/T1_TOA',
+            'LANDSAT/LE07/C01/T1_RT_TOA',
+            'LANDSAT/LC08/C01/T1_RT_TOA',
         ]
 
         # If collections is a string, place in a list
@@ -215,10 +216,12 @@ class Collection():
             self.collections = [c for c in self.collections if 'LT05' not in c]
         if self.end_date <= '1999-01-01':
             self.collections = [c for c in self.collections if 'LE07' not in c]
-        if self.end_date >= '2022-01-01':
+        if self.start_date >= '2022-01-01':
             self.collections = [c for c in self.collections if 'LE07' not in c]
         if self.end_date <= '2013-01-01':
             self.collections = [c for c in self.collections if 'LC08' not in c]
+        if self.end_date <= '2022-01-01':
+            self.collections = [c for c in self.collections if 'LC09' not in c]
         # if self.end_date <= '2015-01-01':
         #     self.collections = [c for c in self.collections if 'COPERNICUS' not in c]
 
@@ -247,11 +250,16 @@ class Collection():
 
         """
         # Override the class parameters if necessary
-        if not variables:
+        # Distinguish between variables defaulting to None, and variables being
+        #   set to an empty list, in which case the merged landsat collection
+        #   should be returned.
+        if variables is None:
             if self.variables:
                 variables = self.variables
             else:
                 raise ValueError('variables parameter must be set')
+        elif not variables:
+            pass
         if not start_date:
             start_date = self.start_date
         if not end_date:
@@ -289,14 +297,21 @@ class Collection():
                 elif 'LC08' in coll_id:
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
+                elif 'LC09' in coll_id:
+                    input_coll = input_coll.filter(ee.Filter.gt(
+                        'system:time_start', ee.Date('2022-01-01').millis()))
 
-                def compute_lsr(image):
+                def compute_vars(image):
                     model_obj = Image.from_landsat_c2_sr(
                         sr_image=ee.Image(image), **self.model_args)
                     return model_obj.calculate(variables)
 
-                variable_coll = variable_coll.merge(
-                    ee.ImageCollection(input_coll.map(compute_lsr)))
+                # Skip going into image class if variables is not set so raw
+                #   landsat collection can be returned for getting image_id_list
+                if variables:
+                    input_coll = ee.ImageCollection(input_coll.map(compute_vars))
+
+                variable_coll = variable_coll.merge(input_coll)
 
             elif coll_id in self._landsat_c1_sr_collections:
                 input_coll = ee.ImageCollection(coll_id)\
@@ -327,13 +342,17 @@ class Collection():
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
 
-                def compute_lsr(image):
+                def compute_vars(image):
                     model_obj = Image.from_landsat_c1_sr(
                         sr_image=ee.Image(image), **self.model_args)
                     return model_obj.calculate(variables)
 
-                variable_coll = variable_coll.merge(
-                    ee.ImageCollection(input_coll.map(compute_lsr)))
+                # Skip going into image class if variables is not set so raw
+                #   landsat collection can be returned for getting image_id_list
+                if variables:
+                    input_coll = ee.ImageCollection(input_coll.map(compute_vars))
+
+                variable_coll = variable_coll.merge(input_coll)
 
             elif coll_id in self._landsat_c1_toa_collections:
                 input_coll = ee.ImageCollection(coll_id)\
@@ -365,13 +384,17 @@ class Collection():
                     input_coll = input_coll.filter(ee.Filter.gt(
                         'system:time_start', ee.Date('2013-04-01').millis()))
 
-                def compute_ltoa(image):
+                def compute_vars(image):
                     model_obj = Image.from_landsat_c1_toa(
                         toa_image=ee.Image(image), **self.model_args)
                     return model_obj.calculate(variables)
 
-                variable_coll = variable_coll.merge(
-                    ee.ImageCollection(input_coll.map(compute_ltoa)))
+                # Skip going into image class if variables is not set so raw
+                #   landsat collection can be returned for getting image_id_list
+                if variables:
+                    input_coll = ee.ImageCollection(input_coll.map(compute_vars))
+
+                variable_coll = variable_coll.merge(input_coll)
 
             else:
                 raise ValueError(f'unsupported collection: {coll_id}')
@@ -733,14 +756,16 @@ class Collection():
     def get_image_ids(self):
         """Return image IDs of the input images
 
+        Note, this does not return the extra images used for interpolation
+
         Returns
         -------
         list
 
         """
-        # CGM - This doesn't return the extra images used for interpolation
-        return sorted(list(self._build(variables=['ndvi'])\
-            .aggregate_array('image_id').getInfo()))
-
-        # Strip merge indices (this works for Landsat and Sentinel image IDs
-        # return sorted(['_'.join(x.split('_')[-3:]) for x in output])
+        # CGM - Setting variables to None bypasses the Image class, so image_id
+        #   is not set and merge indices must be removed from the system:index
+        return list(utils.getinfo(self._build(variables=[])
+                                  .aggregate_array('system:id')))
+        # return list(utils.getinfo(self._build(variables=['ndvi'])
+        #                           .aggregate_array('image_id')))
