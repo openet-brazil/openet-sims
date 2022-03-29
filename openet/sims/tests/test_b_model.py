@@ -109,16 +109,15 @@ def test_Model_init_crop_data_images(parameter):
         [2007, 2008],
         [2008, 2008],
         [2016, 2016],
-        # [2017, 2017],
-        # [2018, 2018],
         [2019, 2019],
         [2020, 2020],
-        [2021, 2020],
+        [2021, 2021],
+        [2022, 2021],
     ]
 )
 def test_Model_crop_type_source_cdl_collection(year, expected):
     """Test that the CDL collection is filtered to a single year and is limited
-    to years with data (2008-2018 as of 7/15/2019)
+    to years with data (2008-2021 as of 3/25/2021)
     """
     output = utils.getinfo(default_model_obj(
         crop_type_source='USDA/NASS/CDL', year=ee.Number(year)).crop_type)
@@ -142,10 +141,22 @@ def test_Model_crop_type_source_cdl_image_exception():
         #     crop_type_source='USDA/NASS/CDL/2099').crop_type)
 
 
-def test_Model_crop_type_source_openet_crop_type():
+@pytest.mark.parametrize(
+    'crop_type_source',
+    [
+        'projects/openet/crop_type/v2020c',
+        'projects/openet/crop_type/v2021a',
+        'projects/earthengine-legacy/assets/projects/openet/crop_type/v2021a',
+        'projects/openet/crop_type/annual',
+        'projects/openet/crop_type/annual_provisional',
+        'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_provisional',
+    ]
+)
+def test_Model_crop_type_source_openet_crop_type(crop_type_source):
     output = utils.getinfo(default_model_obj(
-        crop_type_source='projects/openet/crop_type/annual_provisional').crop_type)
-    assert output['properties']['id'] == 'projects/openet/crop_type/annual_provisional'
+        crop_type_source=crop_type_source).crop_type)
+    expected = crop_type_source.replace('projects/earthengine-legacy/assets/', '')
+    assert output['properties']['id'] == expected
 
 
 def test_Model_crop_type_source_exception():

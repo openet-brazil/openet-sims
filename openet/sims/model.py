@@ -265,56 +265,41 @@ class Model():
             crop_type_img = ee.Image.constant(self.crop_type_source)
             #     .rename('crop_type')
             # properties = properties.set('id', 'constant')
-
         elif (type(self.crop_type_source) is str and
               self.crop_type_source.upper() == 'USDA/NASS/CDL'):
+            # Assume source is the CDL image collection ID
             # Use the CDL image closest to the image date
-            # Hard coding the CDL year range but it could be computed dynamically
-            year_min = ee.Number(2008)
-            year_max = ee.Number(2020)
-            # year_max = ee.Date(ee.ImageCollection('USDA/NASS/CDL')
-            #     .limit(1, 'system:index', False).first()
-            #     .get('system:time_start')).get('year')
-            # year_max = ee.Number.parse(ee.ImageCollection('USDA/NASS/CDL')\
-            #     .limit(1, 'system:index', False).first().get('system:index'))
-
-            start_year = ee.Number(self.year).min(year_max).max(year_min)
-            cdl_coll = ee.ImageCollection('USDA/NASS/CDL')\
-                .filterDate(ee.Date.fromYMD(start_year, 1, 1),
-                            ee.Date.fromYMD(start_year.add(1), 1, 1))\
+            # Don't use CDL images before 2008
+            cdl_coll = ee.ImageCollection('USDA/NASS/CDL')
+            cdl_year = ee.Number(self.year)\
+                .max(2008)\
+                .min(ee.Date(cdl_coll.aggregate_max('system:time_start')).get('year'))
+            cdl_coll = cdl_coll\
+                .filterDate(ee.Date.fromYMD(cdl_year, 1, 1),
+                            ee.Date.fromYMD(cdl_year.add(1), 1, 1))\
                 .select(['cropland'])
             crop_type_img = ee.Image(cdl_coll.first())
             properties = properties.set('id', crop_type_img.get('system:id'))
-
         elif (type(self.crop_type_source) is str and
                 self.crop_type_source.upper().startswith('USDA/NASS/CDL')):
-            crop_type_img = ee.Image(self.crop_type_source)\
-                .select(['cropland'])
+            # Assume source is a single CDL image ID
+            crop_type_img = ee.Image(self.crop_type_source).select(['cropland'])
             properties = properties.set('id', crop_type_img.get('system:id'))
-
         elif (type(self.crop_type_source) is str and
-                self.crop_type_source.lower() in [
-                    'projects/openet/crop_type/annual',
-                    'projects/openet/crop_type/annual_staged',
-                    'projects/openet/crop_type/annual_provisional',
-                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual',
-                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_staged',
-                    'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_provisional',
-              ]):
-            # Use the crop_type image closest to the image date
-            # Hard coding the year range but it could be computed dynamically
-            year_min = ee.Number(2000)
-            year_max = ee.Number(2020)
-            start_year = ee.Number(self.year).min(year_max).max(year_min)
+                'projects/openet/crop_type' in self.crop_type_source.lower()):
+            # Assume source is an OpenET crop type image collection ID
+            # Use the crop type image closest to the image date
+            crop_coll = ee.ImageCollection(self.crop_type_source)
+            cdl_year = ee.Number(self.year)\
+                .max(ee.Date(crop_coll.aggregate_min('system:time_start')).get('year'))\
+                .min(ee.Date(crop_coll.aggregate_max('system:time_start')).get('year'))
             crop_type_coll = ee.ImageCollection(self.crop_type_source)\
-                .filterDate(ee.Date.fromYMD(start_year, 1, 1),
-                            ee.Date.fromYMD(start_year.add(1), 1, 1))
+                .filterDate(ee.Date.fromYMD(cdl_year, 1, 1),
+                            ee.Date.fromYMD(cdl_year.add(1), 1, 1))
             crop_type_img = crop_type_coll.mosaic()
             properties = properties.set('id', crop_type_coll.get('system:id'))
-
         # TODO: Support ee.Image and ee.ImageCollection sources
         # elif isinstance(self.crop_type_source, computedobject.ComputedObject):
-
         else:
             raise ValueError(f'unsupported crop_type_source: {self.crop_type_source}')
 

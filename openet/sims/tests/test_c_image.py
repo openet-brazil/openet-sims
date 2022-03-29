@@ -11,7 +11,7 @@ import openet.sims.utils as utils
 # import openet.core.utils as utils
 
 
-COLL_ID = 'LANDSAT/LC08/C01/T1_SR/'
+COLL_ID = 'LANDSAT/LC08/C02/T1_L2/'
 SCENE_ID = 'LC08_044033_20170716'
 SCENE_DT = datetime.datetime.strptime(SCENE_ID[-8:], '%Y%m%d')
 SCENE_DATE = SCENE_DT.strftime('%Y-%m-%d')
@@ -473,10 +473,11 @@ def test_Image_from_landsat_c2_sr_default_image():
 @pytest.mark.parametrize(
     'image_id',
     [
-        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
-        'LANDSAT/LE07/C02/T1_L2/LE07_044033_20170708',
-        # 'LANDSAT/LT05/C02/T1_L2/LT05_044033_20110716',
         # 'LANDSAT/LT04/C02/T1_L2/LT04_044033_19830812',
+        'LANDSAT/LT05/C02/T1_L2/LT05_044033_20110716',
+        'LANDSAT/LE07/C02/T1_L2/LE07_044033_20170708',
+        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
+        'LANDSAT/LC09/C02/T1_L2/LC09_044033_20220127',
     ]
 )
 def test_Image_from_landsat_c2_sr_image_id(image_id):
