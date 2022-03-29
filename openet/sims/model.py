@@ -155,7 +155,8 @@ class Model():
 
         # Initialize Kc based on a simple NDVI model
         # AG Do we even need to apply the kc_generic if we're doing ag only pixels?
-        kc = self.kc_generic(ndvi)
+        if self.mask_non_ag_flag is False:
+            kc = self.kc_generic(ndvi)
         # kc = fc.multiply(0)
 
         # Apply generic crop class Kc functions
