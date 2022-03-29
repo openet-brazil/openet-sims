@@ -11,7 +11,7 @@ import openet.sims.utils as utils
 # import openet.core.utils as utils
 
 
-COLL_ID = 'LANDSAT/LC08/C01/T1_SR/'
+COLL_ID = 'LANDSAT/LC08/C02/T1_L2/'
 SCENE_ID = 'LC08_044033_20170716'
 SCENE_DT = datetime.datetime.strptime(SCENE_ID[-8:], '%Y%m%d')
 SCENE_DATE = SCENE_DT.strftime('%Y-%m-%d')

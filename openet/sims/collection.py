@@ -123,7 +123,7 @@ class Collection():
         if et_reference_factor and self.et_reference_factor < 0:
             raise ValueError('et_reference_factor must be greater than zero')
         et_reference_resample_methods = ['nearest', 'bilinear', 'bicubic']
-        if (et_reference_resample and \
+        if (et_reference_resample and
                 et_reference_resample.lower() not in et_reference_resample_methods):
             raise ValueError('unsupported et_reference_resample method')
 
@@ -274,11 +274,22 @@ class Collection():
                     .filterDate(start_date, end_date)\
                     .filterBounds(self.geometry)\
                     .filterMetadata('CLOUD_COVER_LAND', 'less_than',
-                                    self.cloud_cover_max)
+                                    self.cloud_cover_max)\
+                    .filterMetadata('CLOUD_COVER_LAND', 'greater_than', -0.5)
 
-                # TODO: Need to come up with a system for applying
-                #   generic filter arguments to the collections
-                if coll_id in self.filter_args.keys():
+                # TODO: Move this to a separate function (maybe in utils.py?)
+                #   since it is identical for all the supported collections
+                if (self.filter_args is None or
+                        not isinstance(self.filter_args, dict) or
+                        coll_id not in self.filter_args.keys()):
+                    pass
+                elif isinstance(self.filter_args[coll_id], ee.ComputedObject):
+                    input_coll = input_coll.filter(self.filter_args[coll_id])
+                elif isinstance(self.filter_args[coll_id], list):
+                    # TODO: This generic dictionary based filtering should
+                    #   probably be removed since only the "equals" filter
+                    #   has been implemented and the functionality is better
+                    #   handled with the other approach.
                     for f in copy.deepcopy(self.filter_args[coll_id]):
                         try:
                             filter_type = f.pop('type')
@@ -286,6 +297,8 @@ class Collection():
                             continue
                         if filter_type.lower() == 'equals':
                             input_coll = input_coll.filter(ee.Filter.equals(**f))
+                else:
+                    raise ValueError('Unsupported filter_arg parameter')
 
                 # Time filters are to remove bad (L5) and pre-op (L8) images
                 if 'LT05' in coll_id:
