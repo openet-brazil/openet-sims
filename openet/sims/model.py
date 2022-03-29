@@ -157,7 +157,10 @@ class Model():
         # AG Do we even need to apply the kc_generic if we're doing ag only pixels?
         if self.mask_non_ag_flag is False:
             kc = self.kc_generic(ndvi)
-        # kc = fc.multiply(0)
+        else:
+            # CGM - Might want to start with a premasked image based on the crop
+            #   class instead of starting with 0 values and then masking below
+            kc = ndvi.multiply(0)
 
         # Apply generic crop class Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
@@ -165,13 +168,7 @@ class Model():
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
-
-        # Class 6 is now the fallow class
-        # If(croptype == fallow and ndvi <= 0.35) then Kcb = max(0 | fc)
-        kc = kc.where(self.crop_class.eq(6).And(ndvi.lte(0.35)), fc.max(0))
-
-        # If (crop type == fallow and ndvi > 0.35) then Kcb = -0.4771(fc**2) + 1.4045(fc) + 0.15
-        kc = kc.where(self.crop_class.eq(6).And(ndvi.gt(0.35)), self.expression("-0.4771(fc**2) + 1.4045(fc) + 0.15"))
+        kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
 
         if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
@@ -185,8 +182,10 @@ class Model():
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
-            kc = kc.where(kc.gte(0.2), kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
-                          self._kcb(self._kd_tree(fc), 0.5).clamp(0, 1.2)))
+            # CGM - Commenting out for now
+            # kc = kc.where(
+            #     self.crop_class.eq(3).And(self.h_max.gte(0)).And(kc.gte(0.2)),
+            #     self._kcb(self._kd_tree(fc), kc_min=0.5).clamp(0, 1.2))
 
         # CGM - Is it okay to apply this after all the other Kc functions?
         #   Should we only apply this to non-ag crop classes?
@@ -344,8 +343,7 @@ class Model():
         ee.Image
 
         """
-        return ndvi.multiply(1.25).add(0.2).max(0) \
-            .rename(['kc'])
+        return ndvi.multiply(1.25).add(0.2).max(0).rename(['kc'])
 
     def kc_row_crop(self, fc):
         """Generic crop coefficient for annual row crops (class 1)
@@ -395,8 +393,7 @@ class Model():
             Irrigation Science 22:187-194.  DOI 10.1007/s00271-003-0084-4 [EQN 7]
 
         """
-        return fc.multiply(1.48).add(0.007)\
-            .rename(['kc'])
+        return fc.multiply(1.48).add(0.007).rename(['kc'])
 
     def kc_rice(self, fc, ndvi):
         """Crop coefficient for rice crops (class 5)
@@ -418,10 +415,29 @@ class Model():
         the Kc is adjusted to 1.05 for low NDVI pixels.
 
         """
-        # Can't use fc for determining water since it is clamped to >= 0
-        #   for low ndvi values (i.e. ndvi <= 0.142857)
-        return self.kc_row_crop(fc).where(ndvi.lte(0.14), 1.05)\
-            .rename(['kc'])
+        return self.kc_row_crop(fc).where(ndvi.lte(0.14), 1.05).rename(['kc'])
+
+    def kc_fallow(self, fc, ndvi):
+        """Crop coefficient for fallow crops (class 6)
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index
+
+        Returns
+        -------
+        ee.Image
+
+        Notes
+        -----
+        Kc is computed using the generic annual crop equation (class 1) but
+        the Kc is adjusted to 0 for lower NDVI pixels.
+
+        """
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), 0).rename(['kc'])
 
     def _kcb(self, kd, kc_min=0.15):
         """Basal crop coefficient (Kcb)
@@ -520,8 +536,7 @@ class Model():
             the canopy.  Ag. For. Meteor 132:201-211.  [FIG 10]
 
         """
-        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1)\
-            .rename(['kd'])
+        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1).rename(['kd'])
 
     def _kd_tree(self, fc):
         """Density coefficient for tree crops (class 3)
@@ -588,5 +603,4 @@ def crop_data_image(param_name, crop_type, crop_data, default_value=None):
     else:
         output = crop_type.remap(from_list, to_list)
 
-    return output.double().divide(data.int_scalar) \
-        .rename([param_name])
+    return output.double().divide(data.int_scalar).rename([param_name])

@@ -194,7 +194,8 @@ def test_Model_crop_data_image(crop_type, parameter):
         [1, 1],
         [69, 2],
         [66, 3],
-        [3, 5],  # Rice was switched to class 5 instead of 1
+        [3, 5],   # Rice was switched to class 5 instead of 1
+        [61, 6],  # Fallow was switched to class 6 instead of 1
     ]
 )
 def test_Model_crop_class_constant_value(crop_type, expected):
@@ -231,7 +232,9 @@ def test_Model_fc_reflectance_type_sr(ndvi, expected, tol=0.0001):
         [-0.1, 0.0],   # Clamped
         [0.0, 0.0],    # Clamped
         [0.1, 0.0075],
+        [0.14, 0.0661],   # Break value in rice Kc
         [0.2, 0.154],
+        [0.35, 0.37375],  # Break value in fallow Kc
         [0.5, 0.5935],
         [0.7, 0.8865],
         [0.778, 1.0],  # Clamped
@@ -292,7 +295,7 @@ def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007,
     'ndvi, fc, expected',
     [
         [-0.1, 0.0, 1.05],
-        [0.14, 0.0, 1.05],
+        [0.14, 0.0661, 1.05],
         # An NDVI in the range [0.14, 0.142857] will be clamped to 0 in fc(),
         # but is above the 0.14 threshold in kc() so it is not set to 1.05.
         [0.142, 0, 0.15],
@@ -304,6 +307,25 @@ def test_Model_kc_tree_constant_value(fc=0.8, expected=0.8*1.48+0.007,
 def test_Model_kc_rice_constant_value(ndvi, fc, expected, tol=0.0001):
     m = default_model_obj(crop_type_source=3, crop_type_kc_flag=False)
     output = utils.constant_image_value(m.kc_rice(
+        fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)))
+    assert abs(output['kc'] - expected) <= tol
+
+
+@pytest.mark.parametrize(
+    'ndvi, fc, expected',
+    [
+        [-0.1, 0.0, 0.0],
+        [0.1, 0.0075, 0],
+        [0.2, 0.154, 0],
+        [0.35, 0.37375, 0],
+        [0.351, 0.37375, 0.6084],
+        [0.5, 0.5935, 0.8156],
+        [0.8, 1.0, 1.0776],
+    ]
+)
+def test_Model_kc_fallow_constant_value(ndvi, fc, expected, tol=0.0001):
+    m = default_model_obj(crop_type_source=61, crop_type_kc_flag=False)
+    output = utils.constant_image_value(m.kc_fallow(
         fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)))
     assert abs(output['kc'] - expected) <= tol
 
@@ -396,7 +418,7 @@ def test_Model_kcb_constant_value(kd, doy, h_max, expected, tol=0.0001):
     assert abs(output['kcb'] - expected) <= tol
 
 
-@pytest.mark.parametrize('crop_type', [0, 1, 69, 66, 3])
+@pytest.mark.parametrize('crop_type', [0, 1, 69, 66, 3, 61])
 def test_Model_kc_crop_class_constant_value(crop_type):
     # Check that a number is returned for all crop classes
     m = default_model_obj(crop_type_source=crop_type, crop_type_kc_flag=False)
