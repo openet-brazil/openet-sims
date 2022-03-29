@@ -154,6 +154,7 @@ class Model():
         fc = self.fc(ndvi)
 
         # Initialize Kc based on a simple NDVI model
+        # AG Do we even need to apply the kc_generic if we're doing ag only pixels?
         kc = self.kc_generic(ndvi)
         # kc = fc.multiply(0)
 
@@ -163,6 +164,13 @@ class Model():
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
+
+        # Class 6 is now the fallow class
+        # If(croptype == fallow and ndvi <= 0.35) then Kcb = max(0 | fc)
+        kc = kc.where(self.crop_class.eq(6).And(ndvi.lte(0.35)), fc.max(0))
+
+        # If (crop type == fallow and ndvi > 0.35) then Kcb = -0.4771(fc**2) + 1.4045(fc) + 0.15
+        kc = kc.where(self.crop_class.eq(6).And(ndvi.gt(0.35)), self.expression("-0.4771(fc**2) + 1.4045(fc) + 0.15"))
 
         if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
