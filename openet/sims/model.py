@@ -33,7 +33,7 @@ class Model():
             crop_type_remap='CDL',
             crop_type_kc_flag=False,
             crop_type_annual_skip_flag=False,
-            mask_non_ag_flag=False,
+            mask_non_ag_flag=True,
             water_kc_flag=True,
             reflectance_type='SR',
         ):
