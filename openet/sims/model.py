@@ -149,18 +149,10 @@ class Model():
             [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals from Table 2; 5a (Kcb)]
 
         """
-        # CGM - This could be set as a class property here so that the other
-        #   methods could use it directly?
         fc = self.fc(ndvi)
 
-        # Initialize Kc based on a simple NDVI model
-        # AG Do we even need to apply the kc_generic if we're doing ag only pixels?
-        if self.mask_non_ag_flag is False:
-            kc = self.kc_generic(ndvi)
-        else:
-            # CGM - Might want to start with a premasked image based on the crop
-            #   class instead of starting with 0 values and then masking below
-            kc = ndvi.multiply(0)
+        # Start with the generic NDVI-Kc relationship to initialize Kc
+        kc = self.kc_generic(ndvi)
 
         # Apply generic crop class Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
