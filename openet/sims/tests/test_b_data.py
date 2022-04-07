@@ -62,9 +62,19 @@ def test_cdl_class3_parameters(param):
                if crop_data['crop_class'] == 3 and param in crop_data.keys())
 
 
-def test_cdl_class5():
-    # CGM - Should rice be its own class?
-    assert data.cdl[3]['crop_class'] == 5
+@pytest.mark.parametrize(
+    'crop_type, crop_class',
+    [
+        [1, 1],
+        [69, 2],
+        [66, 3],
+        [3, 5],    # Rice was switched to class 5 instead of 1
+        [61, 6],   # Fallow was switched to class 6 instead of 1
+        [176, 7],  # Grass/pasture was switched to class 7 instead of 1
+    ]
+)
+def test_cdl_crop_classes(crop_type, crop_class):
+    assert data.cdl[crop_type]['crop_class'] == crop_class
 
 
 # CGM - How would I do this?
