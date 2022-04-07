@@ -161,6 +161,7 @@ class Model():
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
         kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
+        kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
 
         if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
@@ -430,6 +431,27 @@ class Model():
 
         """
         return self.kc_row_crop(fc).where(ndvi.lte(0.35), 0).rename(['kc'])
+
+    def kc_grass_pasture(self, fc, ndvi):
+        """Crop coefficient for grass/pasture crops (class 7)
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index
+
+        Returns
+        -------
+        ee.Image
+
+        Notes
+        -----
+        Kc for low ndvi kcb = fc, for high ndvi we use the
+        generic ndvi equation
+        """
+        return self.kc_generic(ndvi).where(ndvi.lte(0.35), fc).rename(['kc'])
 
     def _kcb(self, kd, kc_min=0.15):
         """Basal crop coefficient (Kcb)
