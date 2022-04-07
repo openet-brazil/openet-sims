@@ -344,7 +344,7 @@ def test_Model_kc_fallow_constant_value(ndvi, fc, expected, tol=0.0001):
     ]
 )
 def test_Model_kc_grass_pasture_constant_value(ndvi, fc, expected, tol=0.0001):
-    m = default_model_obj(crop_type_source=61, crop_type_kc_flag=False)
+    m = default_model_obj(crop_type_source=176, crop_type_kc_flag=False)
     output = utils.constant_image_value(m.kc_grass_pasture(
         fc=ee.Image.constant(fc), ndvi=ee.Image.constant(ndvi)))
     assert abs(output['kc'] - expected) <= tol

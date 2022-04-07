@@ -430,7 +430,8 @@ class Model():
         the Kc is adjusted to 0 for lower NDVI pixels.
 
         """
-        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc.max(0.01)).rename(['kc'])
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01)\
+            .rename(['kc'])
 
     def kc_grass_pasture(self, fc, ndvi):
         """Crop coefficient for grass/pasture crops (class 7)
@@ -451,7 +452,8 @@ class Model():
         Kc for low ndvi kcb = fc, for high ndvi we use the
         generic ndvi equation
         """
-        return self.kc_generic(ndvi).where(ndvi.lte(0.35), fc.max(0.01)).rename(['kc'])
+        return self.kc_generic(ndvi).where(ndvi.lte(0.35), fc).max(0.01)\
+            .rename(['kc'])
 
     def _kcb(self, kd, kc_min=0.15):
         """Basal crop coefficient (Kcb)
