@@ -14,10 +14,11 @@ Input Collections
 The SIMS model is currently implemented for the following Earth Engine image collections:
 
 Landsat SR
- * LANDSAT/LC08/C01/T1_SR
- * LANDSAT/LE07/C01/T1_SR
- * LANDSAT/LT05/C01/T1_SR
- * LANDSAT/LT04/C01/T1_SR
+ * LANDSAT/LC09/C02/T1_L2
+ * LANDSAT/LC08/C02/T1_L2
+ * LANDSAT/LE07/C02/T1_L2
+ * LANDSAT/LT05/C02/T1_L2
+ * LANDSAT/LT04/C02/T1_L2
 
 Model Structure
 ===============
@@ -92,7 +93,7 @@ Collection Examples
     import openet.sims as model
 
     overpass_coll = model.Collection(
-            collections=['LANDSAT/LC08/C01/T1_SR'],
+            collections=['LANDSAT/LC08/C02/T1_L2'],
             start_date='2017-06-01',
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
@@ -101,7 +102,7 @@ Collection Examples
         .overpass(variables=['et', 'et_reference', 'et_fraction'])
 
     monthly_coll = model.Collection(
-            collections=['LANDSAT/LC08/C01/T1_SR'],
+            collections=['LANDSAT/LC08/C02/T1_L2'],
             start_date='2017-06-01',
             end_date='2017-09-01',
             geometry=ee.Geometry.Point(-121.5265, 38.7399),
@@ -121,10 +122,10 @@ Image collections can be built by mapping one of the helper methods over an imag
 
 The Image class can also be initialized using any Earth Engine image with an 'ndvi' band and a 'system:time_start' property.
 
-Landsat Collection 1 Surface Reflectance (SR) Input Image
+Landsat Collection 2 Surface Reflectance (SR) Input Image
 ---------------------------------------------------------
 
-To instantiate the class for a Landsat Collection 1 SR image, use the Image.from_landsat_c1_sr() method.
+To instantiate the class for a Landsat Collection 2 SR image, use the Image.from_landsat_c2_sr() method.
 
 The input Landsat image must have the following bands and properties:
 
@@ -135,6 +136,7 @@ LANDSAT_4          B1, B2, B3, B4, B5, B7, B6, pixel_qa
 LANDSAT_5          B1, B2, B3, B4, B5, B7, B6, pixel_qa
 LANDSAT_7          B1, B2, B3, B4, B5, B7, B6, pixel_qa
 LANDSAT_8          B2, B3, B4, B5, B6, B7, B10, pixel_qa
+LANDSAT_9          B2, B3, B4, B5, B6, B7, B10, pixel_qa
 =================  =============================================
 
 =================  =============================================
@@ -144,7 +146,7 @@ system:index       - Landsat Scene ID
                    - Must be in the Earth Engine format (e.g. LC08_044033_20170716)
 system:time_start  Image datetime in milliseconds since 1970
 SATELLITE          - Used to determine which Landsat type (for band renaming)
-                   - Must be: LANDSAT_4, LANDSAT_5, LANDSAT_7, or LANDSAT_8
+                   - Must be: LANDSAT_4, LANDSAT_5, LANDSAT_7, LANDSAT_8, or LANDSAT_9
 =================  =============================================
 
 Image Example
@@ -153,8 +155,8 @@ Image Example
 .. code-block:: python
 
     import openet.sims as model
-    et_img = model.Image.from_landsat_c1_sr(
-        ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'),
+    et_img = model.Image.from_landsat_c2_sr(
+        ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'),
         et_reference_source='IDAHO_EPSCOR/GRIDMET',
         et_reference_band='eto').et
 

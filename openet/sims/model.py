@@ -33,7 +33,7 @@ class Model():
             crop_type_remap='CDL',
             crop_type_kc_flag=False,
             crop_type_annual_skip_flag=False,
-            mask_non_ag_flag=False,
+            mask_non_ag_flag=True,
             water_kc_flag=True,
             reflectance_type='SR',
         ):
@@ -149,13 +149,10 @@ class Model():
             [EQNS 10 (Kd); 7a (Kcb_full) using tree/vine Fr vals from Table 2; 5a (Kcb)]
 
         """
-        # CGM - This could be set as a class property here so that the other
-        #   methods could use it directly?
         fc = self.fc(ndvi)
 
-        # Initialize Kc based on a simple NDVI model
+        # Start with the generic NDVI-Kc relationship to initialize Kc
         kc = self.kc_generic(ndvi)
-        # kc = fc.multiply(0)
 
         # Apply generic crop class Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
@@ -163,6 +160,8 @@ class Model():
                       self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
+        kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
+        kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
 
         if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
@@ -175,6 +174,11 @@ class Model():
 
             kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
                           self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
+
+            # CGM - Commenting out for now
+            # kc = kc.where(
+            #     self.crop_class.eq(3).And(self.h_max.gte(0)).And(kc.gte(0.2)),
+            #     self._kcb(self._kd_tree(fc), kc_min=0.5).clamp(0, 1.2))
 
         # CGM - Is it okay to apply this after all the other Kc functions?
         #   Should we only apply this to non-ag crop classes?
@@ -332,8 +336,7 @@ class Model():
         ee.Image
 
         """
-        return ndvi.multiply(1.25).add(0.2).max(0) \
-            .rename(['kc'])
+        return ndvi.multiply(1.25).add(0.2).max(0).rename(['kc'])
 
     def kc_row_crop(self, fc):
         """Generic crop coefficient for annual row crops (class 1)
@@ -383,8 +386,7 @@ class Model():
             Irrigation Science 22:187-194.  DOI 10.1007/s00271-003-0084-4 [EQN 7]
 
         """
-        return fc.multiply(1.48).add(0.007)\
-            .rename(['kc'])
+        return fc.multiply(1.48).add(0.007).rename(['kc'])
 
     def kc_rice(self, fc, ndvi):
         """Crop coefficient for rice crops (class 5)
@@ -406,9 +408,51 @@ class Model():
         the Kc is adjusted to 1.05 for low NDVI pixels.
 
         """
-        # Can't use fc for determining water since it is clamped to >= 0
-        #   for low ndvi values (i.e. ndvi <= 0.142857)
-        return self.kc_row_crop(fc).where(ndvi.lte(0.14), 1.05)\
+        return self.kc_row_crop(fc).where(ndvi.lte(0.14), 1.05).rename(['kc'])
+
+    def kc_fallow(self, fc, ndvi):
+        """Crop coefficient for fallow crops (class 6)
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index
+
+        Returns
+        -------
+        ee.Image
+
+        Notes
+        -----
+        Kc is computed using the generic annual crop equation (class 1) but
+        the Kc is adjusted to 0 for lower NDVI pixels.
+
+        """
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01)\
+            .rename(['kc'])
+
+    def kc_grass_pasture(self, fc, ndvi):
+        """Crop coefficient for grass/pasture crops (class 7)
+
+        Parameters
+        ----------
+        fc : ee.Image
+            Fraction of cover
+        ndvi : ee.Image
+            Normalized difference vegetation index
+
+        Returns
+        -------
+        ee.Image
+
+        Notes
+        -----
+        Kc for low ndvi kcb = fc, for high ndvi we use the
+        generic ndvi equation
+        """
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01)\
             .rename(['kc'])
 
     def _kcb(self, kd, kc_min=0.15):
@@ -508,8 +552,7 @@ class Model():
             the canopy.  Ag. For. Meteor 132:201-211.  [FIG 10]
 
         """
-        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1)\
-            .rename(['kd'])
+        return fc.multiply(1.5).min(fc.pow(1 / (1 + 2))).min(1).rename(['kd'])
 
     def _kd_tree(self, fc):
         """Density coefficient for tree crops (class 3)
@@ -576,5 +619,4 @@ def crop_data_image(param_name, crop_type, crop_data, default_value=None):
     else:
         output = crop_type.remap(from_list, to_list)
 
-    return output.double().divide(data.int_scalar) \
-        .rename([param_name])
+    return output.double().divide(data.int_scalar).rename([param_name])

@@ -58,6 +58,9 @@ cdl = {
     212: {'crop_class': 3, 'h_max': 2.5, 'm_l': 1.5, 'fr_mid': 0.71,
           'fr_end': 0.94, 'ls_start': 270, 'ls_stop': 365,
           'name': 'Oranges'},
+    215: {'crop_class': 3, 'h_max': 3, 'm_l': 2, 'fr_mid': 0.81,
+          'fr_end': 0.73, 'ls_start': 270, 'ls_stop': 365,
+          'name': 'Avocados'},
     218: {'crop_class': 3, 'h_max': 3, 'm_l': 1.5, 'fr_mid': 0.95,
           'fr_end': 0.75, 'ls_start': 270, 'ls_stop': 300,
           'name': 'Nectarines'},
@@ -225,7 +228,7 @@ cdl = {
     55: {'crop_class': 1, 'name': 'Caneberries'},
     57: {'crop_class': 1, 'name': 'Herbs'},
     59: {'crop_class': 1, 'name': 'Sod/Grass Seed'},
-    61: {'crop_class': 1, 'name': 'Fallow/Idle Cropland'},
+    60: {'crop_class': 1, 'name': 'Switchgrass'},
     219: {'crop_class': 1, 'name': 'Greens'},
     225: {'crop_class': 1, 'name': 'Dbl Crop WinWht/Corn'},
     226: {'crop_class': 1, 'name': 'Dbl Crop Oats/Corn'},
@@ -248,5 +251,11 @@ cdl = {
 
     # Tree crops without custom coefficients
     70: {'crop_class': 3, 'name': 'Christmas Trees'},
-    217: {'crop_class': 3, 'name': 'Pomegranates'}
+    217: {'crop_class': 3, 'name': 'Pomegranates'},
+
+    # Fallow
+    61: {'crop_class': 6, 'name': 'Fallow/Idle Cropland'},
+
+    # Grass pasture
+    176: {'crop_class': 7, 'name': 'Grass/pasture'},
 }
