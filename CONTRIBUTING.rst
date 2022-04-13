@@ -4,15 +4,10 @@ Contributing to OpenET SIMS
 
 Thank you for your interest in supporting the OpenET SIMS project.
 
-Versioning
-==========
-
-The OpenET SIMS project is currently in Beta and the version numbers will be "0.0.X" until a non-Beta release is made.
-
 Coding Conventions
 ==================
 
-OpenET SIMS was developed for Python 3.6.  The code will likely work on other version of Python 3 but there are no plans to officially support Python 2.7 at this time.
+OpenET SIMS was developed for Python 3.7.  The code will likely work on other version of Python 3 but there are no plans to officially support Python 2.7 at this time.
 
 All code should follow the `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__ style guide.
 
@@ -30,7 +25,7 @@ Create the conda environment:
 
 .. code-block:: console
 
-    conda create --name openet python=3.6
+    conda create --name openet python=3.7
 
 Activate the environment:
 

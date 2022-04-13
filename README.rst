@@ -132,11 +132,11 @@ The input Landsat image must have the following bands and properties:
 =================  =============================================
 SATELLITE          Band Names
 =================  =============================================
-LANDSAT_4          B1, B2, B3, B4, B5, B7, B6, pixel_qa
-LANDSAT_5          B1, B2, B3, B4, B5, B7, B6, pixel_qa
-LANDSAT_7          B1, B2, B3, B4, B5, B7, B6, pixel_qa
-LANDSAT_8          B2, B3, B4, B5, B6, B7, B10, pixel_qa
-LANDSAT_9          B2, B3, B4, B5, B6, B7, B10, pixel_qa
+LANDSAT_4          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
+LANDSAT_5          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
+LANDSAT_7          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
+LANDSAT_8          B2, B3, B4, B5, B6, B7, B10, QA_PIXEL
+LANDSAT_9          B2, B3, B4, B5, B6, B7, B10, QA_PIXEL
 =================  =============================================
 
 =================  =============================================
@@ -238,12 +238,12 @@ References
 
 
 
-.. |build| image:: https://github.com/Open-ET/openet-sims-beta/workflows/build/badge.svg
+.. |build| image:: https://github.com/Open-ET/openet-sims/workflows/build/badge.svg
    :alt: Build status
-   :target: https://github.com/Open-ET/openet-sims-beta
+   :target: https://github.com/Open-ET/openet-sims
 .. |version| image:: https://badge.fury.io/py/openet-sims.svg
    :alt: Latest version on PyPI
    :target: https://badge.fury.io/py/openet-sims
-.. |codecov| image:: https://codecov.io/gh/Open-ET/openet-sims-beta/branch/master/graphs/badge.svg
+.. |codecov| image:: https://codecov.io/gh/Open-ET/openet-sims/branch/main/graphs/badge.svg
    :alt: Coverage Status
-   :target: https://codecov.io/gh/Open-ET/openet-sims-beta
+   :target: https://codecov.io/gh/Open-ET/openet-sims

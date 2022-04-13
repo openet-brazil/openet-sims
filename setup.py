@@ -40,8 +40,8 @@ setup(
     # license='Apache',
     author='Alberto Guzman',
     author_email='aguzman@csumb.edu',
-    url=f'https://github.com/Open-ET/openet-{model_name.lower()}-beta',
-    download_url=f'https://github.com/Open-ET/openet-{model_name.lower()}-beta/'
+    url=f'https://github.com/Open-ET/openet-{model_name.lower()}',
+    download_url=f'https://github.com/Open-ET/openet-{model_name.lower()}/'
                  f'archive/v{version}.tar.gz',
     install_requires=['earthengine-api', 'openet-core', 'python-dateutil'],
     setup_requires=['pytest-runner'],
@@ -50,6 +50,7 @@ setup(
     keywords=f'{model_name} OpenET Evapotranspiration Earth Engine',
     classifiers = [
         # 'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.6'],
+        'Programming Language :: Python :: 3.7'
+    ],
     zip_safe=False,
 )
