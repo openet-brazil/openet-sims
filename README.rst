@@ -132,11 +132,11 @@ The input Landsat image must have the following bands and properties:
 =================  =============================================
 SATELLITE          Band Names
 =================  =============================================
-LANDSAT_4          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
-LANDSAT_5          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
-LANDSAT_7          B1, B2, B3, B4, B5, B7, B6, QA_PIXEL
-LANDSAT_8          B2, B3, B4, B5, B6, B7, B10, QA_PIXEL
-LANDSAT_9          B2, B3, B4, B5, B6, B7, B10, QA_PIXEL
+LANDSAT_4          SR_B1, SR_B2, SR_B3, SR_B4, SR_B5, SR_B7, SR_B6, QA_PIXEL
+LANDSAT_5          SR_B1, SR_B2, SR_B3, SR_B4, SR_B5, SR_B7, SR_B6, QA_PIXEL
+LANDSAT_7          SR_B1, SR_B2, SR_B3, SR_B4, SR_B5, SR_B7, SR_B6, QA_PIXEL
+LANDSAT_8          SR_B2, SR_B3, SR_B4, SR_B5, SR_B6, SR_B7, SR_B10, QA_PIXEL
+LANDSAT_9          SR_B2, SR_B3, SR_B4, SR_B5, SR_B6, SR_B7, SR_B10, QA_PIXEL
 =================  =============================================
 
 =================  =============================================
@@ -145,7 +145,7 @@ Property           Description
 system:index       - Landsat Scene ID
                    - Must be in the Earth Engine format (e.g. LC08_044033_20170716)
 system:time_start  Image datetime in milliseconds since 1970
-SATELLITE          - Used to determine which Landsat type (for band renaming)
+SPACECRAFT_ID      - Used to determine which Landsat type (for band renaming)
                    - Must be: LANDSAT_4, LANDSAT_5, LANDSAT_7, LANDSAT_8, or LANDSAT_9
 =================  =============================================
 
