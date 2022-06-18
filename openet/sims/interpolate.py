@@ -38,8 +38,9 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
             Compute daily Ke values by simulating water balance in evaporable
             zone. Default is False.
         spinup_days: int
-            Number of days prior to start_date to simulate for starting soil
-            water state. Default is 15 days.
+            Number of extra days prior to start_date to simulate for starting
+            soil water state.  This value will be added to the interp_days when
+            setting the interpolation start date.  Default is 0 days.
     model_args : dict
         Parameters from the MODEL section of the INI file.  The reference
         source and parameters will need to be set here if computing
@@ -354,9 +355,9 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
 
         return ee.Image(image_list) \
             .set({
-            'system:index': ee.Date(agg_start_date).format(date_format),
-            'system:time_start': ee.Date(agg_start_date).millis()})
-        #     .set(interp_properties)\
+                'system:index': ee.Date(agg_start_date).format(date_format),
+                'system:time_start': ee.Date(agg_start_date).millis()})
+        #     .set(interp_properties)
 
     # Combine input, interpolated, and derived values
     if t_interval.lower() == 'daily':
@@ -464,6 +465,7 @@ def daily_ke(daily_coll,
 
     # Fraction of wetting
     # Setting to 1 for now (precip), but could be lower for irrigation
+    # CGM - Not used below
     frac_wet = ee.Image(1)
 
     # Depth of evaporable zone
@@ -473,17 +475,17 @@ def daily_ke(daily_coll,
     # Total evaporable water (mm)
     # Allen et al. 1998 eqn 73
     tew = field_capacity.expression(
-        '10*(b()-0.5*wp)*z_e',
+        '10 * (b() - 0.5 * wp) * z_e',
         {'wp': wilting_point, 'z_e': z_e}
     )
 
     # Readily evaporable water (mm)
-    rew = awc.expression('0.8+54.4*b()/100')
+    rew = awc.expression('0.8 + 54.4 * b() / 100')
     rew = rew.where(rew.gt(tew), tew)
 
     # Coefficients for skin layer retention, Allen (2011)
     c0 = ee.Image(0.8)
-    c1 = c0.expression('2*(1-b())')
+    c1 = c0.expression('2 * (1 - b())')
 
     # 1.2 is max for grass reference (ETo)
     ke_max = ee.Image(1.2)
@@ -493,8 +495,7 @@ def daily_ke(daily_coll,
     frac_day_evap = ee.Image(0.5)
 
     # Get precip collection
-    daily_pr_coll = ee.ImageCollection(precip_source) \
-        .select(precip_band)
+    daily_pr_coll = ee.ImageCollection(precip_source).select(precip_band)
 
     # Assume soil is at field capacity to start
     # i.e. depletion = 0
@@ -502,12 +503,12 @@ def daily_ke(daily_coll,
     #init_de_rew = ee.Image(ee.Image(0.0).select([0], ['de_rew']))
     init_de = tew.select([0], ['de'])
     init_de_rew = rew.select([0], ['de_rew'])
-    init_c_eff = ee.Image(init_de \
+    init_c_eff = init_de \
         .expression(
-            "C0+C1*(1-b()/TEW)",
+            "C0 + C1 * (1 - b() / TEW)",
             {'C0': c0, 'C1': c1, 'TEW': tew}) \
         .min(1) \
-        .select([0], ['c_eff']))
+        .select([0], ['c_eff'])
 
     # Create list to hold water balance rasters when iterating over collection
     # Doesn't seem like you can create an empty list in ee?
@@ -545,20 +546,24 @@ def daily_ke(daily_coll,
 
         # Fraction of day stage 1 evap
         # Allen 2011, eq 12
-        ft = rew.expression(
-            '(b()-de_rew_prev)/(ke_max*eto)',
-            {
-                'de_rew_prev': prev_img.select('de_rew'),
-                'rew': rew,
-                'ke_max': ke_max,
-                'eto': curr_img.select('et_reference')}).clamp(0.0, 1.0).rename('ft')
+        ft = rew \
+            .expression(
+                '(b() - de_rew_prev) / (ke_max * eto)',
+                {
+                    'de_rew_prev': prev_img.select('de_rew'),
+                    'rew': rew,
+                    'ke_max': ke_max,
+                    'eto': curr_img.select('et_reference')
+                }) \
+            .clamp(0.0, 1.0) \
+            .rename('ft')
 
         # Soil evap reduction coeff, FAO 56
         kr = tew.expression(
-            "(b()-de_prev)/(b()-rew)",
-            {
-                'de_prev': prev_img.select('de'),
-                'rew': rew}).clamp(0.0, 1.0).rename('kr')
+                "(b() - de_prev) / (b() - rew)",
+                {'de_prev': prev_img.select('de'), 'rew': rew}) \
+            .clamp(0.0, 1.0) \
+            .rename('kr')
         
         de_prev = prev_img.select('de').rename('de_prev')
 
@@ -571,10 +576,9 @@ def daily_ke(daily_coll,
 
         # Soil evap coeff, FAO 56
         ke = ft.expression(
-            "(b() + (1 - b()) * kr) * ke_max",
-            {
-                'kr': kr,
-                'ke_max': ke_max}).rename('ke')
+                "(b() + (1 - b()) * kr) * ke_max",
+                {'kr': kr, 'ke_max': ke_max}) \
+            .rename('ke')
         ke = ke.min(few.multiply(ke_max))
 
         # Dual crop coefficient: Kc = Kcb + Ke
@@ -590,7 +594,7 @@ def daily_ke(daily_coll,
         # CGM - Why not just add ke to et_frac and clamp the result?
         #   What does the extra .where call do?
         et_frac = ee.Image(img).select(['et_fraction']) 
-        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke).clamp(0, 1.15))\
+        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke).clamp(0, 1.15)) \
             .rename('et_fraction')
 
         # Depletion, FAO 56
@@ -601,7 +605,8 @@ def daily_ke(daily_coll,
                     .add(
                         ee.Image(1)
                             .subtract(frac_day_evap)
-                            .multiply(precip_img.select('current')))) \
+                            .multiply(precip_img.select('current')))
+            ) \
             .add(ete.divide(few.select('few'))) \
             .select([0], ['de']).rename('de')
 
@@ -610,7 +615,7 @@ def daily_ke(daily_coll,
 
         # Stage 1 depletion (REW)
         # Allen 2011
-        de_rew = prev_img.select('de_rew')\
+        de_rew = prev_img.select('de_rew') \
             .subtract(
                 frac_day_evap
                     .multiply(precip_img.select('next'))
@@ -621,8 +626,8 @@ def daily_ke(daily_coll,
                     )
                     .multiply(prev_img.select('c_eff'))
             ) \
-        .add(ete.divide(few.select('few'))) \
-        .select([0], ['de_rew']).rename('de_rew')
+            .add(ete.divide(few.select('few'))) \
+            .select([0], ['de_rew']).rename('de_rew')
 
         # Can't have negative depletion
         de_rew = de_rew.min(rew).max(0)
@@ -631,9 +636,8 @@ def daily_ke(daily_coll,
         # Allen 2011, eq 15
         c_eff = de \
             .expression(
-                "c0+c1*(1-b()/tew)",
-                {'c0': c0, 'c1': c1, 'tew': tew}
-            ) \
+                "c0 + c1 * (1 - b() / tew)",
+                {'c0': c0, 'c1': c1, 'tew': tew}) \
             .min(1) \
             .select([0], ['c_eff'])
 
