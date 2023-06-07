@@ -112,12 +112,14 @@ def test_Model_init_crop_data_images(parameter):
         [2019, 2019],
         [2020, 2020],
         [2021, 2021],
-        [2022, 2021],
+        [2022, 2022],
+        # TODO: Make this test dynamic since it will fail in 2024 when the 2023 CDL is released
+        [2023, 2022],
     ]
 )
 def test_Model_crop_type_source_cdl_collection(year, expected):
     """Test that the CDL collection is filtered to a single year and is limited
-    to years with data (2008-2021 as of 3/25/2021)
+    to years with data (2008-2022 as of 6/7/2023)
     """
     output = utils.getinfo(default_model_obj(
         crop_type_source='USDA/NASS/CDL', year=ee.Number(year)).crop_type)
