@@ -147,7 +147,6 @@ def test_Model_crop_type_source_cdl_image_exception():
         'projects/openet/crop_type/v2020c',
         'projects/openet/crop_type/v2021a',
         'projects/earthengine-legacy/assets/projects/openet/crop_type/v2021a',
-        'projects/openet/crop_type/annual',
         'projects/openet/crop_type/annual_provisional',
         'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_provisional',
     ]
