@@ -1,6 +1,5 @@
 import copy
 import datetime
-import importlib.metadata
 import pprint
 
 from dateutil.relativedelta import *
@@ -11,6 +10,11 @@ import openet.core.interpolate
 
 from . import utils
 from .image import Image
+
+try:
+    from importlib import metadata
+except ImportError: # for Python<3.8
+    import importlib_metadata as metadata
 
 
 def lazy_property(fn):
@@ -659,8 +663,8 @@ class Collection():
             'collections': ', '.join(self.collections),
             'interp_days': interp_days,
             'interp_method': interp_method,
-            'model_name': importlib.metadata.metadata('openet-sims')['Name'],
-            'model_version': importlib.metadata.metadata('openet-sims')['Version'],
+            'model_name': metadata.metadata('openet-sims')['Name'],
+            'model_version': metadata.metadata('openet-sims')['Version'],
             # 'model_name': openet.sims.MODEL_NAME,
             # 'model_version': openet.sims.__version__,
         }
