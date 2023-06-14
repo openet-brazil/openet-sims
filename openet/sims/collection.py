@@ -1,5 +1,6 @@
 import copy
 import datetime
+import importlib.metadata
 import pprint
 
 from dateutil.relativedelta import *
@@ -10,8 +11,6 @@ import openet.core.interpolate
 
 from . import utils
 from .image import Image
-# Importing to get version number, is there a better way?
-import openet.sims
 
 
 def lazy_property(fn):
@@ -660,8 +659,10 @@ class Collection():
             'collections': ', '.join(self.collections),
             'interp_days': interp_days,
             'interp_method': interp_method,
-            'model_name': openet.sims.MODEL_NAME,
-            'model_version': openet.sims.__version__,
+            'model_name': importlib.metadata.metadata('openet-sims')['Name'],
+            'model_version': importlib.metadata.metadata('openet-sims')['Version'],
+            # 'model_name': openet.sims.MODEL_NAME,
+            # 'model_version': openet.sims.__version__,
         }
         interp_properties.update(self.model_args)
 

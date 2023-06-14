@@ -1,4 +1,5 @@
 import pprint
+import re
 
 import ee
 import pytest
@@ -250,8 +251,7 @@ def test_Collection_build_exclusive_enddate():
 def test_Collection_build_cloud_cover():
     """Test if the cloud cover max parameter is being applied"""
     # CGM - The filtered images should probably be looked up programmatically
-    output = utils.getinfo(default_coll_obj(cloud_cover_max=0.5)._build(
-        variables=['et']))
+    output = utils.getinfo(default_coll_obj(cloud_cover_max=0.5)._build(variables=['et']))
     assert 'LE07_044033_20170724' not in parse_scene_id(output)
 
 
@@ -635,6 +635,13 @@ def test_Collection_interpolate_only_interpolate_images():
     assert {y['id'] for x in output['features'] for y in x['bands']} == variables
 
 
+def test_Collection_interpolate_model_properties():
+    """Check that setting the model name and version from importlib.metadata works"""
+    output = utils.getinfo(default_coll_obj().interpolate().first())
+    assert output['properties']['model_name'] == 'openet-sims'
+    assert re.match('^\d.\d.\d\w+', output['properties']['model_version'])
+
+
 @pytest.mark.parametrize(
     'collections, scene_id_list',
     [
@@ -644,7 +651,6 @@ def test_Collection_interpolate_only_interpolate_images():
 )
 def test_Collection_get_image_ids(collections, scene_id_list):
     # get_image_ids method makes a getInfo call internally
-    output = default_coll_obj(collections=collections, variables=None)\
-        .get_image_ids()
+    output = default_coll_obj(collections=collections, variables=None).get_image_ids()
     assert type(output) is list
     assert set(x.split('/')[-1] for x in output) == set(scene_id_list)
