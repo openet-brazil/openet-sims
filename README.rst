@@ -2,7 +2,7 @@
 OpenET - SIMS Model
 ===================
 
-|version| |build| |codecov|
+|version| |build|
 
 **WARNING: This code is in development, is being provided without support, and is subject to change at any time without notification**
 
@@ -244,6 +244,3 @@ References
 .. |version| image:: https://badge.fury.io/py/openet-sims.svg
    :alt: Latest version on PyPI
    :target: https://badge.fury.io/py/openet-sims
-.. |codecov| image:: https://codecov.io/gh/Open-ET/openet-sims/branch/main/graphs/badge.svg
-   :alt: Coverage Status
-   :target: https://codecov.io/gh/Open-ET/openet-sims
