@@ -33,3 +33,5 @@ privatekey.b64
 .codecov.yml
 .coveralls.yml
 coverage.xml
+
+notes.txt
