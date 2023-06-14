@@ -443,7 +443,8 @@ class Collection():
         return self._build(variables=variables)
 
     def interpolate(self, variables=None, t_interval='custom',
-                    interp_method='linear', interp_days=32, **kwargs):
+                    interp_method='linear', interp_days=32, use_joins=False,
+                    **kwargs):
         """
 
         Parameters
@@ -461,6 +462,10 @@ class Collection():
         interp_days : int, str, optional
             Number of extra days before the start date and after the end date
             to include in the interpolation calculation. (the default is 32).
+        use_joins : bool, optional
+            If True, use joins to link the target and source collections.
+            If False, the source collection will be filtered for each target image.
+            This parameter is passed through to interpolate.daily().
         kwargs : dict, optional
 
         Returns
@@ -552,8 +557,8 @@ class Collection():
                 raise ValueError(f'{et_reference_param} was not set')
 
         if type(self.model_args['et_reference_source']) is str:
-            # Assume a string source is an single image collection ID
-            #   not an list of collection IDs or ee.ImageCollection
+            # Assume a string source is a single image collection ID
+            #   not a list of collection IDs or ee.ImageCollection
             daily_et_ref_coll_id = self.model_args['et_reference_source']
             daily_et_ref_coll = ee.ImageCollection(daily_et_ref_coll_id) \
                 .filterDate(start_date, end_date) \
@@ -600,14 +605,19 @@ class Collection():
 
         # Build initial scene image collection
         scene_coll = self._build(
-            variables=interp_vars, start_date=interp_start_date,
-            end_date=interp_end_date)
+            variables=interp_vars,
+            start_date=interp_start_date,
+            end_date=interp_end_date,
+        )
 
         # For count, compute the composite/mosaic image for the mask band only
         if 'count' in variables:
             aggregate_coll = openet.core.interpolate.aggregate_to_daily(
                 image_coll=scene_coll.select(['mask']),
-                start_date=start_date, end_date=end_date)
+                start_date=start_date,
+                end_date=end_date,
+            )
+
             # The following is needed because the aggregate collection can be
             #   empty if there are no scenes in the target date range but there
             #   are scenes in the interpolation date range.
@@ -629,10 +639,13 @@ class Collection():
         daily_coll = openet.core.interpolate.daily(
             target_coll=daily_et_ref_coll,
             source_coll=scene_coll.select(interp_vars),
-            interp_method=interp_method, interp_days=interp_days,
+            interp_method=interp_method,
+            interp_days=interp_days,
+            use_joins=use_joins,
         )
 
         # Compute ET from ET fraction and reference ET (if necessary)
+        # CGM - The conditional is needed if only interpolating NDVI
         if 'et' in variables or 'et_fraction' in variables:
             def compute_et(img):
                 """This function assumes et_reference and et_fraction are present"""
@@ -723,7 +736,8 @@ class Collection():
                 return aggregate_image(
                     agg_start_date=agg_start_date,
                     agg_end_date=ee.Date(agg_start_date).advance(1, 'day'),
-                    date_format='YYYYMMdd')
+                    date_format='YYYYMMdd',
+                )
 
             return ee.ImageCollection(daily_coll.map(aggregate_daily))
 
@@ -740,7 +754,8 @@ class Collection():
                 return aggregate_image(
                     agg_start_date=agg_start_date,
                     agg_end_date=ee.Date(agg_start_date).advance(1, 'month'),
-                    date_format='YYYYMM')
+                    date_format='YYYYMM',
+                )
 
             return ee.ImageCollection(month_list.map(aggregate_monthly))
 
@@ -756,7 +771,8 @@ class Collection():
                 return aggregate_image(
                     agg_start_date=agg_start_date,
                     agg_end_date=ee.Date(agg_start_date).advance(1, 'year'),
-                    date_format='YYYY')
+                    date_format='YYYY',
+                )
 
             return ee.ImageCollection(year_list.map(aggregate_annual))
 
@@ -764,7 +780,8 @@ class Collection():
             # Returning an ImageCollection to be consistent
             return ee.ImageCollection(aggregate_image(
                 agg_start_date=start_date, agg_end_date=end_date,
-                date_format='YYYYMMdd'))
+                date_format='YYYYMMdd',
+            ))
 
     def get_image_ids(self):
         """Return image IDs of the input images
