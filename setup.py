@@ -37,7 +37,7 @@ setup(
     description=f'Earth Engine based {model_name} Model',
     long_description=long_description,
     long_description_content_type='text/x-rst',
-    # license='Apache',
+    license='Apache',
     author='Alberto Guzman',
     author_email='aguzman@csumb.edu',
     url=f'https://github.com/Open-ET/openet-{model_name.lower()}',
@@ -48,8 +48,8 @@ setup(
     tests_require=['pytest', 'pytest-cov'],
     packages=[f'openet.{model_name.lower()}'],
     keywords=f'{model_name} OpenET Evapotranspiration Earth Engine',
-    classifiers = [
-        # 'License :: OSI Approved :: Apache Software License',
+    classifiers=[
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.7'
     ],
     zip_safe=False,
