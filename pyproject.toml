@@ -1,6 +1,6 @@
 [project]
 name = "openet-sims"
-version = "0.1.0-rc.2"
+version = "0.1.0-rc.3"
 authors = [
   { name="Alberto Guzman", email="aguzman@csumb.edu" },
 ]
@@ -38,3 +38,6 @@ test = [
     "pytest",
     "pandas",
 ]
+
+[tool.setuptools.package-data]
+"openet.sims.tests" = ["*.csv"]
