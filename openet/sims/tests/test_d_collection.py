@@ -165,7 +165,9 @@ def test_Collection_build_default():
 
 def test_Collection_build_variables_custom(variable='ndvi'):
     # Check that setting the build variables overrides the collection variables
-    output = utils.getinfo(default_coll_obj()._build(variables=[variable]).first().bandNames())
+    output = utils.getinfo(
+        default_coll_obj()._build(variables=[variable]).first().bandNames()
+    )
     assert set(output) == {variable}
 
 
@@ -262,9 +264,11 @@ def test_Collection_build_cloud_cover():
 )
 def test_Collection_build_filter_dates_lt05(collection, start_date, end_date):
     """Test that bad Landsat 5 images are filtered"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         collections=[collection], start_date=start_date, end_date=end_date,
-        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50))._build(variables=['et']))
+        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50),
+    )
+    output = utils.getinfo(coll._build(variables=['et']))
     assert parse_scene_id(output) == []
 
 
@@ -278,9 +282,11 @@ def test_Collection_build_filter_dates_lt05(collection, start_date, end_date):
 )
 def test_Collection_build_filter_dates_le07(collection, start_date, end_date):
     """Test that Landsat 7 images after 2021 are filtered"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         collections=[collection], start_date=start_date, end_date=end_date,
-        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50))._build(variables=['et']))
+        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50),
+    )
+    output = utils.getinfo(coll._build(variables=['et']))
     assert parse_scene_id(output) == []
 
 
@@ -294,9 +300,11 @@ def test_Collection_build_filter_dates_le07(collection, start_date, end_date):
 )
 def test_Collection_build_filter_dates_lc08(collection, start_date, end_date):
     """Test that pre-op Landsat 8 images before 2013-04-01 are filtered"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         collections=[collection], start_date=start_date, end_date=end_date,
-        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50))._build(variables=['et']))
+        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50),
+    )
+    output = utils.getinfo(coll._build(variables=['et']))
     assert not [x for x in parse_scene_id(output)
                 if x.split('_')[-1] < end_date.replace('-', '')]
     assert parse_scene_id(output) == []
@@ -310,9 +318,11 @@ def test_Collection_build_filter_dates_lc08(collection, start_date, end_date):
 )
 def test_Collection_build_filter_dates_lc09(collection, start_date, end_date):
     """Test that Landsat 9 images before 2022-01-01 are filtered"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         collections=[collection], start_date=start_date, end_date=end_date,
-        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50))._build(variables=['et']))
+        geometry=ee.Geometry.Rectangle(-125, 25, -65, 50),
+    )
+    output = utils.getinfo(coll._build(variables=['et']))
     assert not [x for x in parse_scene_id(output)
                 if x.split('_')[-1] < end_date.replace('-', '')]
     assert parse_scene_id(output) == []
@@ -323,11 +333,13 @@ def test_Collection_build_filter_args_keyword():
     collections = ['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2']
     wrs2_filter = [
         {'type': 'equals', 'leftField': 'WRS_PATH', 'rightValue': 44},
-        {'type': 'equals', 'leftField': 'WRS_ROW', 'rightValue': 33}]
+        {'type': 'equals', 'leftField': 'WRS_ROW', 'rightValue': 33},
+    ]
     coll_obj = default_coll_obj(
         collections=collections,
         geometry=ee.Geometry.Rectangle(-125, 35, -120, 40),
-        filter_args={c: wrs2_filter for c in collections})
+        filter_args={c: wrs2_filter for c in collections},
+    )
     output = utils.getinfo(coll_obj._build(variables=['et']))
     assert {x[5:11] for x in parse_scene_id(output)} == {'044033'}
 
@@ -335,12 +347,14 @@ def test_Collection_build_filter_args_keyword():
 def test_Collection_build_filter_args_eeobject():
     # Need to test with two collections to catch bug when deepcopy isn't used
     collections = ['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2']
-    wrs2_filter = ee.Filter.And(ee.Filter.equals('WRS_PATH', 44),
-                                ee.Filter.equals('WRS_ROW', 33))
+    wrs2_filter = ee.Filter.And(
+        ee.Filter.equals('WRS_PATH', 44), ee.Filter.equals('WRS_ROW', 33)
+    )
     coll_obj = default_coll_obj(
         collections=collections,
         geometry=ee.Geometry.Rectangle(-125, 35, -120, 40),
-        filter_args={c: wrs2_filter for c in collections})
+        filter_args={c: wrs2_filter for c in collections},
+    )
     output = utils.getinfo(coll_obj._build(variables=['et']))
     assert {x[5:11] for x in parse_scene_id(output)} == {'044033'}
 
@@ -482,10 +496,11 @@ def test_Collection_interpolate_et_reference_resample_exception():
 
 def test_Collection_interpolate_et_reference_params_kwargs():
     """Test setting et_reference parameters in the Collection init args"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='eto',
-        et_reference_factor=0.5, et_reference_resample='bicubic',
-        model_args={}).interpolate())
+        et_reference_factor=0.5, et_reference_resample='bicubic', model_args={},
+    )
+    output = utils.getinfo(coll.interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -493,13 +508,15 @@ def test_Collection_interpolate_et_reference_params_kwargs():
 
 def test_Collection_interpolate_et_reference_params_model_args():
     """Test setting et_reference parameters in the model_args"""
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         et_reference_source=None, et_reference_band=None,
         et_reference_factor=None, et_reference_resample=None,
         model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.5,
-                    'et_reference_resample': 'bicubic'}).interpolate())
+                    'et_reference_resample': 'bicubic'},
+    )
+    output = utils.getinfo(coll.interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -511,10 +528,11 @@ def test_Collection_interpolate_et_reference_params_interpolate_args():
                          'et_reference_band': 'eto',
                          'et_reference_factor': 0.5,
                          'et_reference_resample': 'bicubic'}
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         et_reference_source=None, et_reference_band=None,
-        et_reference_factor=None, et_reference_resample=None,
-        model_args={}).interpolate(**et_reference_args))
+        et_reference_factor=None, et_reference_resample=None, model_args={},
+    )
+    output = utils.getinfo(coll.interpolate(**et_reference_args))
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -624,20 +642,22 @@ def test_Collection_interpolate_custom_model_args():
 def test_Collection_interpolate_only_interpolate_images():
     """Test if count band is returned if no images in the date range"""
     variables = {'et', 'count'}
-    output = utils.getinfo(default_coll_obj(
+    coll = default_coll_obj(
         collections=['LANDSAT/LC08/C02/T1_L2'],
         geometry=ee.Geometry.Point(-123.623, 44.745),
         start_date='2017-04-01', end_date='2017-04-30',
-        variables=list(variables), cloud_cover_max=70
-    ).interpolate())
+        variables=list(variables), cloud_cover_max=70,
+    )
+    output = utils.getinfo(coll.interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == variables
 
 
 def test_Collection_interpolate_model_properties():
     """Check that setting the model name and version from importlib.metadata works"""
     output = utils.getinfo(default_coll_obj().interpolate().first())
+    version_re = re.compile(r'[0-9]+[.][0-9]+[.][0-9]+\w*')
     assert output['properties']['model_name'] == 'openet-sims'
-    assert re.match('^\\d.\\d.\\d\\w+', output['properties']['model_version'])
+    assert version_re.match(output['properties']['model_version'])
 
 
 @pytest.mark.parametrize(

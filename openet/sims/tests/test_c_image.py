@@ -349,7 +349,7 @@ def test_Image_calculate_variables_all():
 def test_Image_from_landsat_c1_sr_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c1_sr(input_image())
-    assert isinstance(type(output), type(default_image_obj()))
+    assert type(output) == type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -405,7 +405,7 @@ def test_Image_from_landsat_c1_sr_reflectance_type():
 def test_Image_from_landsat_c1_toa_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c1_toa(input_image())
-    assert isinstance(type(output), type(default_image_obj()))
+    assert type(output) == type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -464,7 +464,7 @@ def test_Image_from_landsat_c1_toa_reflectance_type():
 def test_Image_from_landsat_c2_sr_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c2_sr(input_image())
-    assert isinstance(type(output), type(default_image_obj()))
+    assert type(output) == type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -540,7 +540,7 @@ def test_Image_from_landsat_c2_sr_cloud_mask_args():
     image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
     output = sims.Image.from_landsat_c2_sr(
         image_id, cloudmask_args={'snow_flag': True, 'cirrus_flag': True})
-    assert isinstance(type(output), type(default_image_obj()))
+    assert type(output) == type(default_image_obj())
 
 
 @pytest.mark.parametrize(
