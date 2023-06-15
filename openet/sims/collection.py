@@ -1,8 +1,8 @@
 import copy
 import datetime
-import pprint
+# import pprint
 
-from dateutil.relativedelta import *
+from dateutil.relativedelta import relativedelta
 import ee
 import openet.core.interpolate
 # TODO: import utils from openet.core
@@ -13,7 +13,7 @@ from .image import Image
 
 try:
     from importlib import metadata
-except ImportError: # for Python<3.8
+except ImportError:  # for Python<3.8
     import importlib_metadata as metadata
 
 
@@ -36,25 +36,25 @@ class Collection():
     """"""
 
     def __init__(
-            self,
-            collections,
-            start_date,
-            end_date,
-            geometry,
-            variables=None,
-            cloud_cover_max=70,
-            et_reference_source=None,
-            et_reference_band=None,
-            et_reference_factor=None,
-            et_reference_resample=None,
-            filter_args=None,
-            model_args=None,
-            # model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
-            #             'et_reference_band': 'eto',
-            #             'et_reference_factor': 0.85,
-            #             'et_reference_resample': 'nearest},
-            # **kwargs
-        ):
+        self,
+        collections,
+        start_date,
+        end_date,
+        geometry,
+        variables=None,
+        cloud_cover_max=70,
+        et_reference_source=None,
+        et_reference_band=None,
+        et_reference_factor=None,
+        et_reference_resample=None,
+        filter_args=None,
+        model_args=None,
+        # model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
+        #             'et_reference_band': 'eto',
+        #             'et_reference_factor': 0.85,
+        #             'et_reference_resample': 'nearest},
+        # **kwargs
+    ):
         """Earth Engine based SIMS ETcb Image Collection object
 
         Parameters
@@ -538,16 +538,16 @@ class Collection():
         # Intentionally using model_args (instead of self.et_reference_source, etc.) in
         #   this function since model_args is passed to Image class in _build()
         # if 'et' in variables or 'et_reference' in variables:
-        if ('et_reference_source' in kwargs.keys() and \
+        if ('et_reference_source' in kwargs.keys() and
                 kwargs['et_reference_source'] is not None):
             self.model_args['et_reference_source'] = kwargs['et_reference_source']
-        if ('et_reference_band' in kwargs.keys() and \
+        if ('et_reference_band' in kwargs.keys() and
                 kwargs['et_reference_band'] is not None):
             self.model_args['et_reference_band'] = kwargs['et_reference_band']
-        if ('et_reference_factor' in kwargs.keys() and \
+        if ('et_reference_factor' in kwargs.keys() and
                 kwargs['et_reference_factor'] is not None):
             self.model_args['et_reference_factor'] = kwargs['et_reference_factor']
-        if ('et_reference_resample' in kwargs.keys() and \
+        if ('et_reference_resample' in kwargs.keys() and
                 kwargs['et_reference_resample'] is not None):
             self.model_args['et_reference_resample'] = kwargs['et_reference_resample']
 
@@ -628,7 +628,8 @@ class Collection():
             #   bands will be which causes a non-homogenous image collection.
             aggregate_coll = aggregate_coll.merge(
                 ee.Image.constant(0).rename(['mask'])
-                    .set({'system:time_start': ee.Date(start_date).millis()}))
+                .set({'system:time_start': ee.Date(start_date).millis()})
+            )
 
         # Including count/mask causes problems in interpolate.daily() function.
         # Issues with mask being an int but the values need to be double.

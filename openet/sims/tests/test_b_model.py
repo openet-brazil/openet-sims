@@ -1,4 +1,4 @@
-import pprint
+# import pprint
 
 import ee
 import pytest
@@ -86,7 +86,7 @@ def test_crop_data_image_default_nodata():
         param_name='crop_class',
         crop_type=ee.Image.constant(-999).rename(['crop_class']),
         crop_data={9: {'crop_class': 10}}))
-    assert output['crop_class'] == None
+    assert output['crop_class'] is None
 
 
 def test_Model_init_default_parameters():
@@ -574,9 +574,11 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
         if doy < crop_profile['ls_start']:
             fr = crop_profile['fr_mid']
         elif crop_profile['ls_start'] <= doy and doy <= crop_profile['ls_stop']:
-            fr = crop_profile['fr_mid'] - ((doy - crop_profile['ls_start'])\
-                                           / (crop_profile['ls_stop'] - crop_profile['ls_start'])\
-                                           * (crop_profile['fr_mid'] - crop_profile['fr_end']))
+            fr = crop_profile["fr_mid"] - (
+                (doy - crop_profile["ls_start"])
+                / (crop_profile["ls_stop"] - crop_profile["ls_start"])
+                * (crop_profile["fr_mid"] - crop_profile["fr_end"])
+            )
         elif doy > crop_profile['ls_stop']:
             fr = crop_profile['fr_end']
 
@@ -611,9 +613,9 @@ def ndvi_to_kc_point(ndvi, doy, crop_type):
         # 1.26 * 0.8 - 0.18 = 0.828
         # ((0.828 ** 2) * -0.4771) + (1.4047 * 0.828) + 0.15 = 0.9859994736
         [0.8, 174, 1],
-        #[1.0, 200, 3],
-        #[0.5, 200, 3],
-        #[0.1, 200, 3],
+        # [1.0, 200, 3],
+        # [0.5, 200, 3],
+        # [0.1, 200, 3],
         [1.0, 200, 1],
         [0.5, 200, 1],
         [0.1, 200, 1],

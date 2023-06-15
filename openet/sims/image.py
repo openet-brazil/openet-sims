@@ -39,20 +39,20 @@ class Image():
     """GEE based model for computing SIMS ETcb"""
 
     def __init__(
-            self,
-            image,
-            crop_type_source='USDA/NASS/CDL',
-            crop_type_remap='CDL',
-            crop_type_kc_flag=False,
-            crop_type_annual_skip_flag=False,
-            et_reference_source=None,
-            et_reference_band=None,
-            et_reference_factor=None,
-            et_reference_resample=None,
-            mask_non_ag_flag=False,
-            water_kc_flag=True,
-            reflectance_type='SR',
-        ):
+        self,
+        image,
+        crop_type_source='USDA/NASS/CDL',
+        crop_type_remap='CDL',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        et_reference_source=None,
+        et_reference_band=None,
+        et_reference_factor=None,
+        et_reference_resample=None,
+        mask_non_ag_flag=False,
+        water_kc_flag=True,
+        reflectance_type='SR',
+    ):
         """Earth Engine based SIMS image object
 
         Parameters
@@ -139,7 +139,7 @@ class Image():
         if et_reference_factor and self.et_reference_factor < 0:
             raise ValueError('et_reference_factor must be greater than zero')
         et_reference_resample_methods = ['nearest', 'bilinear', 'bicubic']
-        if (et_reference_resample and \
+        if (et_reference_resample and
                 et_reference_resample.lower() not in et_reference_resample_methods):
             raise ValueError('unsupported et_reference_resample method')
 

@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-from dateutil.relativedelta import *
+from dateutil.relativedelta import relativedelta
 import ee
 import openet.core.interpolate
 # TODO: import utils from openet.core
@@ -10,10 +10,17 @@ import openet.core.interpolate
 from . import utils
 
 
-
-def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
-                           interp_args, model_args, t_interval, use_joins=False,
-                           _interp_vars=['et_fraction', 'ndvi']):
+def from_scene_et_fraction(
+    scene_coll,
+    start_date,
+    end_date,
+    variables,
+    interp_args,
+    model_args,
+    t_interval,
+    use_joins=False,
+    _interp_vars=['et_fraction', 'ndvi'],
+):
     """Interpolate from a precomputed collection of Landast ET fraction scenes
 
     Parameters
@@ -173,8 +180,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     if type(et_reference_source) is str and et_reference_source.lower() == 'provided':
         daily_et_ref_coll = scene_coll.map(lambda x: x.select('et_reference'))
     elif type(et_reference_source) is str:
-        # Assume a string source is an single image collection ID
-        #   not an list of collection IDs or ee.ImageCollection
+        # Assume a string source is a single image collection ID
+        #   not a list of collection IDs or ee.ImageCollection
         daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
             .filterDate(start_date, end_date) \
             .select([et_reference_band], ['et_reference'])
@@ -222,8 +229,10 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     # For count, compute the composite/mosaic image for the mask band only
     if 'count' in variables:
         aggregate_coll = openet.core.interpolate.aggregate_to_daily(
-            image_coll = scene_coll.select(['mask']),
-            start_date=start_date, end_date=end_date)
+            image_coll=scene_coll.select(['mask']),
+            start_date=start_date,
+            end_date=end_date
+        )
         # The following is needed because the aggregate collection can be
         #   empty if there are no scenes in the target date range but there
         #   are scenes in the interpolation date range.
@@ -231,7 +240,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
         #   bands will be which causes a non-homogeneous image collection.
         aggregate_coll = aggregate_coll.merge(
             ee.Image.constant(0).rename(['mask'])
-                .set({'system:time_start': ee.Date(start_date).millis()}))
+            .set({'system:time_start': ee.Date(start_date).millis()})
+        )
 
     # Interpolate to a daily time step
     # NOTE: the daily function is not computing ET (ETf x ETo)
@@ -239,7 +249,8 @@ def from_scene_et_fraction(scene_coll, start_date, end_date, variables,
     daily_coll = openet.core.interpolate.daily(
         target_coll=daily_et_ref_coll,
         source_coll=scene_coll.select(interp_vars),
-        interp_method=interp_method, interp_days=interp_days,
+        interp_method=interp_method,
+        interp_days=interp_days,
         use_joins=use_joins,
         compute_product=False,
     )
@@ -441,11 +452,11 @@ def daily_ke(daily_coll,
         'pr', which is the band for gridMET.
     fc_source : str, ee.Image
         GEE Image of soil field capacity values
-    fc_band : str 
+    fc_band : str
         Name of the band in `fc_source` that contains field capacity values
     wp_source : str, ee.Image
         GEE Image of soil permanent wilting point values
-    wp_band : str 
+    wp_band : str
         Name of the band in `wp_source` that contains wilting point values
 
     Returns
@@ -465,8 +476,8 @@ def daily_ke(daily_coll,
 
     # Fraction of wetting
     # Setting to 1 for now (precip), but could be lower for irrigation
-    # CGM - Not used below
-    frac_wet = ee.Image(1)
+    # CGM - Not used below, commenting out for now
+    # frac_wet = ee.Image(1)
 
     # Depth of evaporable zone
     # Set to 10 cm
@@ -475,8 +486,7 @@ def daily_ke(daily_coll,
     # Total evaporable water (mm)
     # Allen et al. 1998 eqn 73
     tew = field_capacity.expression(
-        '10 * (b() - 0.5 * wp) * z_e',
-        {'wp': wilting_point, 'z_e': z_e}
+        '10 * (b() - 0.5 * wp) * z_e', {'wp': wilting_point, 'z_e': z_e}
     )
 
     # Readily evaporable water (mm)
@@ -499,16 +509,15 @@ def daily_ke(daily_coll,
 
     # Assume soil is at field capacity to start
     # i.e. depletion = 0
-    #init_de = ee.Image(ee.Image(0.0).select([0], ['de']))
-    #init_de_rew = ee.Image(ee.Image(0.0).select([0], ['de_rew']))
+    # init_de = ee.Image(ee.Image(0.0).select([0], ['de']))
+    # init_de_rew = ee.Image(ee.Image(0.0).select([0], ['de_rew']))
     init_de = tew.select([0], ['de'])
     init_de_rew = rew.select([0], ['de_rew'])
-    init_c_eff = init_de \
-        .expression(
-            "C0 + C1 * (1 - b() / TEW)",
-            {'C0': c0, 'C1': c1, 'TEW': tew}) \
-        .min(1) \
+    init_c_eff = (
+        init_de.expression("C0 + C1 * (1 - b() / TEW)", {'C0': c0, 'C1': c1, 'TEW': tew})
+        .min(1)
         .select([0], ['c_eff'])
+    )
 
     # Create list to hold water balance rasters when iterating over collection
     # Doesn't seem like you can create an empty list in ee?
@@ -519,7 +528,7 @@ def daily_ke(daily_coll,
     interp_list = daily_coll.toList(daily_coll.size())
     # Is list guaranteed to have right order?
     # (Seems to be fine in initial testing.)
-    #interp_list = interp_list.sort(ee.List(['system:index']))
+    # interp_list = interp_list.sort(ee.List(['system:index']))
 
     # Perform daily water balance update
     def water_balance_step(img, wb_coll):
@@ -534,37 +543,46 @@ def daily_ke(daily_coll,
         # CGM the
         curr_date = curr_img.date()
         curr_precip = ee.Image(
-            daily_pr_coll.filterDate(curr_date.advance(-1, 'day'), curr_date).first())
+            daily_pr_coll.filterDate(curr_date.advance(-1, 'day'), curr_date).first()
+        )
         next_precip = ee.Image(
-            daily_pr_coll.filterDate(curr_date, curr_date.advance(1, 'day')).first())
-        # curr_precip = ee.Image(daily_pr_coll
-        #     .filterDate(curr_date, curr_date.advance(1, 'day')).first()).rename('precip')
-        # next_precip = ee.Image(daily_pr_coll
-        #     .filterDate(curr_date.advance(1, 'day'), curr_date.advance(2, 'day')).first())
-        precip_img = ee.Image([curr_precip, next_precip]) \
-            .rename(['current', 'next'])
+            daily_pr_coll.filterDate(curr_date, curr_date.advance(1, 'day')).first()
+        )
+        # curr_precip = ee.Image(
+        #     daily_pr_coll.filterDate(curr_date, curr_date.advance(1, 'day')).first()
+        # )
+        # next_precip = ee.Image(
+        #     daily_pr_coll.filterDate(curr_date.advance(1, 'day'), curr_date.advance(2, 'day'))
+        #     .first()
+        # )
+        precip_img = ee.Image([curr_precip, next_precip]).rename(['current', 'next'])
 
         # Fraction of day stage 1 evap
         # Allen 2011, eq 12
-        ft = rew \
-            .expression(
+        ft = (
+            rew.expression(
                 '(b() - de_rew_prev) / (ke_max * eto)',
                 {
                     'de_rew_prev': prev_img.select('de_rew'),
                     'rew': rew,
                     'ke_max': ke_max,
                     'eto': curr_img.select('et_reference')
-                }) \
-            .clamp(0.0, 1.0) \
+                }
+            )
+            .clamp(0.0, 1.0)
             .rename('ft')
+        )
 
         # Soil evap reduction coeff, FAO 56
-        kr = tew.expression(
+        kr = (
+            tew.expression(
                 "(b() - de_prev) / (b() - rew)",
-                {'de_prev': prev_img.select('de'), 'rew': rew}) \
-            .clamp(0.0, 1.0) \
+                {'de_prev': prev_img.select('de'), 'rew': rew}
+            )
+            .clamp(0.0, 1.0)
             .rename('kr')
-        
+        )
+
         de_prev = prev_img.select('de').rename('de_prev')
 
         # precip only for now
@@ -575,71 +593,76 @@ def daily_ke(daily_coll,
         few = fw.min(fc.multiply(-1).add(1)).max(low_few).rename('few')
 
         # Soil evap coeff, FAO 56
-        ke = ft.expression(
-                "(b() + (1 - b()) * kr) * ke_max",
-                {'kr': kr, 'ke_max': ke_max}) \
+        ke = (
+            ft.expression("(b() + (1 - b()) * kr) * ke_max", {'kr': kr, 'ke_max': ke_max})
+            .min(few.multiply(ke_max))
             .rename('ke')
-        ke = ke.min(few.multiply(ke_max))
+        )
 
         # Dual crop coefficient: Kc = Kcb + Ke
-        #kc = ke.add(curr_img.select('et_fraction')).rename('kc')
+        # kc = ke.add(curr_img.select('et_fraction')).rename('kc')
 
         # Crop ET (note that Kc in other parts of code refers to *basal*
         # crop coeff (Kcb))
-        #etc = kc.multiply(curr_img.select('et_reference')).rename('etc')
+        # etc = kc.multiply(curr_img.select('et_reference')).rename('etc')
 
         # ETe - soil evaporation
         ete = ke.multiply(curr_img.select('et_reference')).rename('ete')
 
         # CGM - Why not just add ke to et_frac and clamp the result?
         #   What does the extra .where call do?
-        et_frac = ee.Image(img).select(['et_fraction']) 
-        etof = et_frac.where(et_frac.lte(1.15), et_frac.add(ke).clamp(0, 1.15)) \
+        et_frac = ee.Image(img).select(['et_fraction'])
+        etof = (
+            et_frac.where(et_frac.lte(1.15), et_frac.add(ke).clamp(0, 1.15))
             .rename('et_fraction')
+        )
 
         # Depletion, FAO 56
-        de = prev_img.select('de') \
+        de = (
+            prev_img.select('de')
             .subtract(
                 frac_day_evap
-                    .multiply(ee.Image(precip_img.select('next')))
-                    .add(
-                        ee.Image(1)
-                            .subtract(frac_day_evap)
-                            .multiply(precip_img.select('current')))
-            ) \
-            .add(ete.divide(few.select('few'))) \
-            .select([0], ['de']).rename('de')
+                .multiply(ee.Image(precip_img.select('next')))
+                .add(
+                    ee.Image(1)
+                    .subtract(frac_day_evap)
+                    .multiply(precip_img.select('current')))
+            )
+            .add(ete.divide(few.select('few')))
+            .select([0], ['de'])
+        )
 
         # Can't have negative depletion
         de = de.min(tew).max(0)
 
         # Stage 1 depletion (REW)
         # Allen 2011
-        de_rew = prev_img.select('de_rew') \
+        de_rew = (
+            prev_img.select('de_rew')
             .subtract(
                 frac_day_evap
-                    .multiply(precip_img.select('next'))
-                    .add(
-                        ee.Image(1)
-                        .subtract(frac_day_evap)
-                        .multiply(precip_img.select('current'))
-                    )
-                    .multiply(prev_img.select('c_eff'))
-            ) \
-            .add(ete.divide(few.select('few'))) \
-            .select([0], ['de_rew']).rename('de_rew')
+                .multiply(precip_img.select('next'))
+                .add(
+                    ee.Image(1)
+                    .subtract(frac_day_evap)
+                    .multiply(precip_img.select('current'))
+                )
+                .multiply(prev_img.select('c_eff'))
+            )
+            .add(ete.divide(few.select('few')))
+            .select([0], ['de_rew'])
+        )
 
         # Can't have negative depletion
         de_rew = de_rew.min(rew).max(0)
 
         # Efficiency of skin layer
         # Allen 2011, eq 15
-        c_eff = de \
-            .expression(
-                "c0 + c1 * (1 - b() / tew)",
-                {'c0': c0, 'c1': c1, 'tew': tew}) \
-            .min(1) \
+        c_eff = (
+            de.expression("c0 + c1 * (1 - b() / tew)", {'c0': c0, 'c1': c1, 'tew': tew})
+            .min(1)
             .select([0], ['c_eff'])
+        )
 
         # Make image to add to list
         # CGM - I removed the duplicate de, de_rew, and ft bands

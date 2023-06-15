@@ -1,4 +1,4 @@
-import pprint
+# import pprint
 
 import ee
 
@@ -25,18 +25,18 @@ class Model():
     """GEE based model for computing SIMS ETcb"""
 
     def __init__(
-            self,
-            # CGM - Switch to ee.Date or time_start instead?
-            year,
-            doy,
-            crop_type_source='USDA/NASS/CDL',
-            crop_type_remap='CDL',
-            crop_type_kc_flag=False,
-            crop_type_annual_skip_flag=False,
-            mask_non_ag_flag=True,
-            water_kc_flag=True,
-            reflectance_type='SR',
-        ):
+        self,
+        # CGM - Switch to ee.Date or time_start instead?
+        year,
+        doy,
+        crop_type_source='USDA/NASS/CDL',
+        crop_type_remap='CDL',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        mask_non_ag_flag=True,
+        water_kc_flag=True,
+        reflectance_type='SR',
+    ):
         """Earth Engine based SIMS model object
 
         Parameters

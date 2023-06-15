@@ -1,6 +1,6 @@
 import datetime
 # import logging
-import pprint
+# import pprint
 
 import ee
 import pytest
@@ -99,10 +99,10 @@ def default_image_obj(ndvi=0.8,
 
 def test_Image_init_default_parameters():
     m = sims.Image(image=default_image())
-    assert m.et_reference_source == None
-    assert m.et_reference_band == None
-    assert m.et_reference_factor == None
-    assert m.et_reference_resample == None
+    assert m.et_reference_source is None
+    assert m.et_reference_band is None
+    assert m.et_reference_factor is None
+    assert m.et_reference_resample is None
     # assert m.crop_type_source == 'USDA/NASS/CDL'
     # assert m.crop_type_remap == 'CDL'
     # assert m.crop_type_kc_flag == False
@@ -341,8 +341,7 @@ def test_Image_calculate_variables_custom():
 
 
 def test_Image_calculate_variables_all():
-    variables = ['et', 'et_fraction', 'et_reference', 'fc', 'kc', 'mask',
-                 'ndvi', 'time']
+    variables = ['et', 'et_fraction', 'et_reference', 'fc', 'kc', 'mask', 'ndvi', 'time']
     output = utils.getinfo(default_image_obj().calculate(variables=variables))
     assert set([x['id'] for x in output['bands']]) == set(variables)
 
@@ -350,7 +349,7 @@ def test_Image_calculate_variables_all():
 def test_Image_from_landsat_c1_sr_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c1_sr(input_image())
-    assert type(output) == type(default_image_obj())
+    assert type(output) is type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -371,8 +370,7 @@ def test_Image_from_landsat_c1_sr_image_id(image_id):
 def test_Image_from_landsat_c1_sr_image():
     """Test instantiating the class from a Landsat ee.Image"""
     image_id = 'LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716'
-    output = utils.getinfo(sims.Image.from_landsat_c1_sr(
-        ee.Image(image_id)).ndvi)
+    output = utils.getinfo(sims.Image.from_landsat_c1_sr(ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
@@ -407,7 +405,7 @@ def test_Image_from_landsat_c1_sr_reflectance_type():
 def test_Image_from_landsat_c1_toa_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c1_toa(input_image())
-    assert type(output) == type(default_image_obj())
+    assert type(output) is type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -431,8 +429,7 @@ def test_Image_from_landsat_c1_toa_image_id(image_id):
 def test_Image_from_landsat_c1_toa_image():
     """Test instantiating the class from a Landsat ee.Image"""
     image_id = 'LANDSAT/LC08/C01/T1_TOA/LC08_044033_20170716'
-    output = utils.getinfo(sims.Image.from_landsat_c1_toa(
-        ee.Image(image_id)).ndvi)
+    output = utils.getinfo(sims.Image.from_landsat_c1_toa(ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
@@ -467,7 +464,7 @@ def test_Image_from_landsat_c1_toa_reflectance_type():
 def test_Image_from_landsat_c2_sr_default_image():
     """Test that the classmethod is returning a class object"""
     output = sims.Image.from_landsat_c2_sr(input_image())
-    assert type(output) == type(default_image_obj())
+    assert type(output) is type(default_image_obj())
 
 
 @pytest.mark.parametrize(
@@ -489,8 +486,7 @@ def test_Image_from_landsat_c2_sr_image_id(image_id):
 def test_Image_from_landsat_c2_sr_image():
     """Test instantiating the class from a Landsat ee.Image"""
     image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
-    output = utils.getinfo(sims.Image.from_landsat_c2_sr(
-        ee.Image(image_id)).ndvi)
+    output = utils.getinfo(sims.Image.from_landsat_c2_sr(ee.Image(image_id)).ndvi)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
@@ -520,17 +516,16 @@ def test_Image_from_landsat_c2_sr_scaling():
     """Test if Landsat SR images images are being scaled"""
     sr_img = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716')
     # CGM - These reflectances should correspond to 0.1 for RED and 0.2 for NIR
-    input_img = ee.Image.constant([10909, 10909, 10909, 14545, 10909, 10909,
-                                   44177.6, 21824, 0]) \
+    input_img = (
+        ee.Image.constant([10909, 10909, 10909, 14545, 10909, 10909, 44177.6, 21824, 0])
         .rename(['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7',
-                 'ST_B10', 'QA_PIXEL', 'QA_RADSAT']) \
+                 'ST_B10', 'QA_PIXEL', 'QA_RADSAT'])
         .set({'SPACECRAFT_ID': ee.String(sr_img.get('SPACECRAFT_ID')),
               'system:id': ee.String(sr_img.get('system:id')),
               'system:index': ee.String(sr_img.get('system:index')),
               'system:time_start': ee.Number(sr_img.get('system:time_start'))})
-
-    output = utils.constant_image_value(
-        sims.Image.from_landsat_c2_sr(input_img).ndvi)
+    )
+    output = utils.constant_image_value(sims.Image.from_landsat_c2_sr(input_img).ndvi)
     assert abs(output['ndvi'] - 0.333) <= 0.01
 
 
@@ -545,7 +540,7 @@ def test_Image_from_landsat_c2_sr_cloud_mask_args():
     image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
     output = sims.Image.from_landsat_c2_sr(
         image_id, cloudmask_args={'snow_flag': True, 'cirrus_flag': True})
-    assert type(output) == type(default_image_obj())
+    assert type(output) is type(default_image_obj())
 
 
 @pytest.mark.parametrize(

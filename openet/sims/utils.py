@@ -86,7 +86,7 @@ def is_number(x):
     try:
         float(x)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -110,5 +110,5 @@ def valid_date(date_str, date_fmt='%Y-%m-%d'):
     try:
         datetime.datetime.strptime(date_str, date_fmt)
         return True
-    except Exception as e:
+    except Exception:
         return False

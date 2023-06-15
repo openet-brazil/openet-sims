@@ -1,4 +1,4 @@
-import pprint
+# import pprint
 import re
 
 import ee
@@ -38,6 +38,7 @@ default_coll_args = {
     'filter_args': {},
 }
 
+
 def default_coll_obj(**kwargs):
     args = default_coll_args.copy()
     args.update(kwargs)
@@ -61,11 +62,11 @@ def test_Collection_init_default_parameters():
     del args['variables']
 
     m = sims.Collection(**args)
-    assert m.variables == None
-    assert m.et_reference_source == None
-    assert m.et_reference_band == None
-    assert m.et_reference_factor == None
-    assert m.et_reference_resample == None
+    assert m.variables is None
+    assert m.et_reference_source is None
+    assert m.et_reference_band is None
+    assert m.et_reference_factor is None
+    assert m.et_reference_resample is None
     assert m.cloud_cover_max == 70
     assert m.model_args == {}
     assert m.filter_args == {}
@@ -164,8 +165,7 @@ def test_Collection_build_default():
 
 def test_Collection_build_variables_custom(variable='ndvi'):
     # Check that setting the build variables overrides the collection variables
-    output = utils.getinfo(default_coll_obj()._build(variables=[variable])
-                           .first().bandNames())
+    output = utils.getinfo(default_coll_obj()._build(variables=[variable]).first().bandNames())
     assert set(output) == {variable}
 
 
@@ -185,7 +185,8 @@ def test_Collection_build_variables_empty_list():
     # Setting variables to an empty list should return the merged Landsat collection
     output = utils.getinfo(
         default_coll_obj(collections=C02_COLLECTIONS, variables=None)
-            ._build(variables=[]).first().bandNames())
+        ._build(variables=[]).first().bandNames()
+    )
     assert 'SR_B3' in output
 
 
@@ -198,15 +199,13 @@ def test_Collection_build_invalid_variable_exception():
 def test_Collection_build_dates():
     """Check that dates passed to build function override Class dates"""
     coll_obj = default_coll_obj(start_date='2017-08-01', end_date='2017-09-01')
-    output = utils.getinfo(coll_obj._build(
-        start_date='2017-07-16', end_date='2017-07-17'))
+    output = utils.getinfo(coll_obj._build(start_date='2017-07-16', end_date='2017-07-17'))
     assert parse_scene_id(output) == ['LC08_044033_20170716']
 
 
 def test_Collection_build_landsat_c1_toa():
     """Test if the Landsat TOA (non RT) collections can be built"""
-    coll_obj = default_coll_obj(
-        collections=['LANDSAT/LC08/C01/T1_TOA', 'LANDSAT/LE07/C01/T1_TOA'])
+    coll_obj = default_coll_obj(collections=['LANDSAT/LC08/C01/T1_TOA', 'LANDSAT/LE07/C01/T1_TOA'])
     output = utils.getinfo(coll_obj._build())
     assert parse_scene_id(output) == C01_SCENE_ID_LIST
     assert VARIABLES == {y['id'] for x in output['features'] for y in x['bands']}
@@ -214,8 +213,7 @@ def test_Collection_build_landsat_c1_toa():
 
 def test_Collection_build_landsat_c1_sr():
     """Test if the Landsat SR collections can be built"""
-    coll_obj = default_coll_obj(
-        collections=['LANDSAT/LC08/C01/T1_SR', 'LANDSAT/LE07/C01/T1_SR'])
+    coll_obj = default_coll_obj(collections=['LANDSAT/LC08/C01/T1_SR', 'LANDSAT/LE07/C01/T1_SR'])
     output = utils.getinfo(coll_obj._build())
     assert parse_scene_id(output) == C01_SCENE_ID_LIST
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
@@ -223,8 +221,7 @@ def test_Collection_build_landsat_c1_sr():
 
 def test_Collection_build_landsat_c2_sr():
     """Test if the Landsat SR collections can be built"""
-    coll_obj = default_coll_obj(
-        collections=['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2'])
+    coll_obj = default_coll_obj(collections=['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2'])
     output = utils.getinfo(coll_obj._build())
     assert parse_scene_id(output) == C02_SCENE_ID_LIST
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
@@ -609,11 +606,11 @@ def test_Collection_interpolate_output_type_default():
     output = utils.getinfo(default_coll_obj(variables=test_vars).interpolate())
     output = output['features'][0]['bands']
     bands = {info['id']: i for i, info in enumerate(output)}
-    assert(output[bands['et']]['data_type']['precision'] == 'float')
-    assert(output[bands['et_reference']]['data_type']['precision'] == 'float')
-    assert(output[bands['et_fraction']]['data_type']['precision'] == 'float')
-    assert(output[bands['ndvi']]['data_type']['precision'] == 'float')
-    assert(output[bands['count']]['data_type']['precision'] == 'int')
+    assert output[bands['et']]['data_type']['precision'] == 'float'
+    assert output[bands['et_reference']]['data_type']['precision'] == 'float'
+    assert output[bands['et_fraction']]['data_type']['precision'] == 'float'
+    assert output[bands['ndvi']]['data_type']['precision'] == 'float'
+    assert output[bands['count']]['data_type']['precision'] == 'int'
 
 
 def test_Collection_interpolate_custom_model_args():
@@ -631,7 +628,8 @@ def test_Collection_interpolate_only_interpolate_images():
         collections=['LANDSAT/LC08/C02/T1_L2'],
         geometry=ee.Geometry.Point(-123.623, 44.745),
         start_date='2017-04-01', end_date='2017-04-30',
-        variables=list(variables), cloud_cover_max=70).interpolate())
+        variables=list(variables), cloud_cover_max=70
+    ).interpolate())
     assert {y['id'] for x in output['features'] for y in x['bands']} == variables
 
 
@@ -639,7 +637,7 @@ def test_Collection_interpolate_model_properties():
     """Check that setting the model name and version from importlib.metadata works"""
     output = utils.getinfo(default_coll_obj().interpolate().first())
     assert output['properties']['model_name'] == 'openet-sims'
-    assert re.match('^\d.\d.\d\w+', output['properties']['model_version'])
+    assert re.match('^\\d.\\d.\\d\\w+', output['properties']['model_version'])
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,5 @@
 import datetime
-import pprint
+# import pprint
 
 import ee
 import pandas as pd
@@ -32,31 +32,25 @@ def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5],
     mask = img.add(1).updateMask(1).uint8()
 
     # The time band needs to be the 0 UTC time (date)
-    date1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).millis())
-    date2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).millis())
-    date3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).millis())
-    time1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).advance(18, 'hours').millis())
-    time2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).advance(18, 'hours').millis())
-    time3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).advance(18, 'hours').millis())
+    d1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).millis())
+    d2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).millis())
+    d3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).millis())
+    t1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).advance(18, 'hours').millis())
+    t2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).advance(18, 'hours').millis())
+    t3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).advance(18, 'hours').millis())
 
     # Mask and time bands currently get added on to the scene collection
     #   and images are unscaled just before interpolating in the export tool
     scene_coll = ee.ImageCollection([
-        ee.Image([img.add(et_fraction[0]), img.add(et[0]), img.add(ndvi[0]),
-                  img.add(date1), mask])\
+        ee.Image([img.add(et_fraction[0]), img.add(et[0]), img.add(ndvi[0]), img.add(d1), mask])
             .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LE07_044033_20170708',
-                  'system:time_start': time1}),
-        ee.Image([img.add(et_fraction[1]), img.add(et[1]), img.add(ndvi[1]),
-                  img.add(date2), mask])\
+            .set({'system:index': 'LE07_044033_20170708', 'system:time_start': t1}),
+        ee.Image([img.add(et_fraction[1]), img.add(et[1]), img.add(ndvi[1]), img.add(d2), mask])
             .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LC08_044033_20170716',
-                  'system:time_start': time2}),
-        ee.Image([img.add(et_fraction[2]), img.add(et[2]), img.add(ndvi[2]),
-                  img.add(date3), mask])\
+            .set({'system:index': 'LC08_044033_20170716', 'system:time_start': t2}),
+        ee.Image([img.add(et_fraction[2]), img.add(et[2]), img.add(ndvi[2]), img.add(d3), mask])
             .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LE07_044033_20170724',
-                  'system:time_start': time3}),
+            .set({'system:index': 'LE07_044033_20170724', 'system:time_start': t3}),
     ])
     return scene_coll.select(variables)
 
@@ -66,12 +60,13 @@ def test_from_scene_et_fraction_daily_values(tol=0.0001):
         scene_coll(['et_fraction', 'ndvi', 'time', 'mask'], ndvi=[0.2, 0.4, 0.6]),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi'],
-        interp_args={'interp_method': 'linear', 'interp_days': 32,},
+        interp_args={'interp_method': 'linear', 'interp_days': 32},
         model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
-        t_interval='daily')
+        t_interval='daily',
+    )
 
     TEST_POINT = (-121.5265, 38.7399)
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
@@ -101,7 +96,8 @@ def test_from_scene_et_fraction_monthly_values(tol=0.0001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
-        t_interval='monthly')
+        t_interval='monthly',
+    )
 
     TEST_POINT = (-121.5265, 38.7399)
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
@@ -122,7 +118,8 @@ def test_from_scene_et_fraction_custom_values(tol=0.0001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
-        t_interval='custom')
+        t_interval='custom',
+    )
 
     TEST_POINT = (-121.5265, 38.7399)
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
@@ -143,7 +140,8 @@ def test_from_scene_et_fraction_monthly_et_reference_factor(tol=0.0001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 0.5,
                     'et_reference_resample': 'nearest'},
-        t_interval='monthly')
+        t_interval='monthly',
+    )
 
     TEST_POINT = (-121.5265, 38.7399)
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
@@ -165,7 +163,8 @@ def test_from_scene_et_fraction_monthly_et_reference_resample(tol=0.0001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'bilinear'},
-        t_interval='monthly')
+        t_interval='monthly',
+    )
 
     TEST_POINT = (-121.5265, 38.7399)
     output = utils.point_coll_value(output_coll, TEST_POINT, scale=10)
@@ -179,7 +178,7 @@ def test_from_scene_et_fraction_monthly_et_reference_resample(tol=0.0001):
 def test_from_scene_et_fraction_t_interval_bad_value():
     # Function should raise a ValueError if t_interval is not supported
     with pytest.raises(ValueError):
-        output_coll = interpolate.from_scene_et_fraction(
+        interpolate.from_scene_et_fraction(
             scene_coll(['et', 'time', 'mask']),
             start_date='2017-07-01', end_date='2017-08-01', variables=['et'],
             interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -187,13 +186,14 @@ def test_from_scene_et_fraction_t_interval_bad_value():
                         'et_reference_band': 'etr',
                         'et_reference_factor': 0.5,
                         'et_reference_resample': 'nearest'},
-            t_interval='deadbeef')
+            t_interval='deadbeef',
+        )
 
 
 def test_from_scene_et_fraction_t_interval_no_value():
     # Function should raise an Exception if t_interval is not set
     with pytest.raises(TypeError):
-        output_coll = interpolate.from_scene_et_fraction(
+        interpolate.from_scene_et_fraction(
             scene_coll(['et', 'time', 'mask']),
             start_date='2017-07-01', end_date='2017-08-01',
             variables=['et', 'et_reference', 'et_fraction', 'count'],
@@ -201,7 +201,8 @@ def test_from_scene_et_fraction_t_interval_no_value():
             model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                         'et_reference_band': 'etr',
                         'et_reference_factor': 0.5,
-                        'et_reference_resample': 'nearest'})
+                        'et_reference_resample': 'nearest'},
+        )
 
 
 @pytest.mark.parametrize(
@@ -226,15 +227,17 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
 
     def make_et_frac(img):
         if 'C01' in landsat_coll_id:
-            et_img = sims.Image.from_landsat_c1_sr(img,
-                    et_reference_source=et_reference_source,
-                    et_reference_band=et_reference_band)\
-                .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+            et_img = sims.Image.from_landsat_c1_sr(
+                img,
+                et_reference_source=et_reference_source,
+                et_reference_band=et_reference_band,
+            ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
         elif 'C02' in landsat_coll_id:
-            et_img = sims.Image.from_landsat_c2_sr(img,
-                    et_reference_source=et_reference_source,
-                    et_reference_band=et_reference_band)\
-                .calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+            et_img = sims.Image.from_landsat_c2_sr(
+                img,
+                et_reference_source=et_reference_source,
+                et_reference_band=et_reference_band,
+            ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
 
         time = ee.Number(img.get('system:time_start'))
         et_img = et_img.addBands([zero.add(time).rename('time')])
@@ -251,7 +254,8 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
-        t_interval='daily')
+        t_interval='daily',
+    )
 
     wb_coll = interpolate.from_scene_et_fraction(
         test_imgs,
@@ -264,7 +268,8 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
-        t_interval='daily')
+        t_interval='daily',
+    )
 
     normal = utils.point_coll_value(normal_coll, TEST_POINT, scale=30)
     wb = utils.point_coll_value(wb_coll, TEST_POINT, scale=30)
@@ -281,9 +286,10 @@ end_date = '2018-03-14'
 comp_df = pd.read_csv('openet/sims/tests/ee_wb_valid.csv')
 comp_df['et_fraction'] = comp_df['etc'] / comp_df['eto']
 
+
 @pytest.fixture
 def synth_test_imgs():
-    landsat_coll_id = f'LANDSAT/LC08/C01/T1_SR'
+    landsat_coll_id = 'LANDSAT/LC08/C01/T1_SR'
     landsat_coll = ee.ImageCollection(landsat_coll_id)\
         .filterDate(start_date, end_date)\
         .filterBounds(ee.Geometry.Point(TEST_POINT))
@@ -349,7 +355,7 @@ def test_daily_ke(synth_test_imgs, synth_precip_imgs):
     base_ts = utils.point_coll_value(synth_test_imgs, TEST_POINT, scale=30)
     base_df = pd.DataFrame(base_ts).reset_index()
     base_df['et'] = base_df['et_fraction'] * base_df['et_reference']
-    
+
     evap_ts = utils.point_coll_value(evap_imgs, TEST_POINT, scale=30)
     evap_df = pd.DataFrame(evap_ts).reset_index()
     evap_df['et'] = evap_df['et_fraction'] * evap_df['et_reference']
@@ -382,7 +388,7 @@ def test_daily_ke(synth_test_imgs, synth_precip_imgs):
 def test_soil_evap_fails_without_ndvi(synth_test_imgs):
     """Test that daily_ke raises exception if `ndvi` band not present"""
     try:
-        wb_coll = interpolate.from_scene_et_fraction(
+        interpolate.from_scene_et_fraction(
             synth_test_imgs,
             start_date=start_date,
             end_date=end_date,
@@ -393,10 +399,11 @@ def test_soil_evap_fails_without_ndvi(synth_test_imgs):
                         'et_reference_band': 'eto',
                         'et_reference_factor': 1.0,
                         'et_reference_resample': 'nearest'},
-            t_interval='daily')
+            t_interval='daily',
+        )
         # if from_scene_et_fraction doesn't raise, assert False
         assert False
-    except:
+    except Exception:
         pass
 
 
