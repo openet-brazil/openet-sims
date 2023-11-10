@@ -39,19 +39,20 @@ def default_image(ndvi=0.8):
 
 # Setting et_reference_source and et_reference_band on the default image to
 # simplify testing but these do not have defaults in the Image class init
-def default_image_args(ndvi=0.8,
-                       et_reference_source='IDAHO_EPSCOR/GRIDMET',
-                       et_reference_band='etr',
-                       et_reference_factor=0.85,
-                       et_reference_resample='nearest',
-                       crop_type_source='USDA/NASS/CDL',
-                       crop_type_remap='CDL',
-                       crop_type_kc_flag=False,
-                       crop_type_annual_skip_flag=False,
-                       mask_non_ag_flag=False,
-                       water_kc_flag=True,
-                       # reflectance_type='SR',
-                       ):
+def default_image_args(
+        ndvi=0.8,
+        et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr',
+        et_reference_factor=0.85,
+        et_reference_resample='nearest',
+        crop_type_source='USDA/NASS/CDL',
+        crop_type_remap='CDL',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        mask_non_ag_flag=False,
+        water_kc_flag=True,
+        # reflectance_type='SR',
+        ):
     return {
         'image': default_image(ndvi=ndvi),
         'et_reference_source': et_reference_source,
@@ -68,19 +69,20 @@ def default_image_args(ndvi=0.8,
     }
 
 
-def default_image_obj(ndvi=0.8,
-                      et_reference_source='IDAHO_EPSCOR/GRIDMET',
-                      et_reference_band='etr',
-                      et_reference_factor=0.85,
-                      et_reference_resample='nearest',
-                      crop_type_source='USDA/NASS/CDL',
-                      crop_type_remap='CDL',
-                      crop_type_kc_flag=False,
-                      crop_type_annual_skip_flag=False,
-                      mask_non_ag_flag=False,
-                      water_kc_flag=True,
-                      # reflectance_type='SR',
-                      ):
+def default_image_obj(
+        ndvi=0.8,
+        et_reference_source='IDAHO_EPSCOR/GRIDMET',
+        et_reference_band='etr',
+        et_reference_factor=0.85,
+        et_reference_resample='nearest',
+        crop_type_source='USDA/NASS/CDL',
+        crop_type_remap='CDL',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        mask_non_ag_flag=False,
+        water_kc_flag=True,
+        # reflectance_type='SR',
+        ):
     return sims.Image(**default_image_args(
         ndvi=ndvi,
         et_reference_source=et_reference_source,
@@ -142,8 +144,7 @@ def test_Image_init_date_properties():
     ]
 )
 def test_Image_static_ndvi_calculation(red, nir, expected, tol=0.000001):
-    output = utils.constant_image_value(
-        sims.Image._ndvi(input_image(red=red, nir=nir)))
+    output = utils.constant_image_value(sims.Image._ndvi(input_image(red=red, nir=nir)))
     assert abs(output['ndvi'] - expected) <= tol
 
 
@@ -309,8 +310,7 @@ def test_Image_mask_properties():
 
 
 def test_Image_mask_constant_value():
-    output = utils.constant_image_value(default_image_obj(
-        crop_type_source=1).mask)
+    output = utils.constant_image_value(default_image_obj(crop_type_source=1).mask)
     assert output['mask'] == 1
 
 
@@ -324,8 +324,7 @@ def test_Image_time_properties():
 
 
 def test_Image_time_constant_value():
-    output = utils.constant_image_value(default_image_obj(
-        crop_type_source=1).time)
+    output = utils.constant_image_value(default_image_obj(crop_type_source=1).time)
     assert output['time'] == SCENE_TIME
 
 

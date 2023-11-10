@@ -349,18 +349,22 @@ class Collection():
 
                 # Time filters are to remove bad (L5) and pre-op (L8) images
                 if 'LT05' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.lt(
-                        'system:time_start', ee.Date('2011-12-31').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.lt('system:time_start', ee.Date('2011-12-31').millis())
+                    )
                 elif 'LE07' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.lt(
-                        'system:time_start', ee.Date('2022-01-01').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.lt('system:time_start', ee.Date('2022-01-01').millis())
+                    )
                 elif 'LC08' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.gt(
-                        'system:time_start', ee.Date('2013-04-01').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.gt('system:time_start', ee.Date('2013-04-01').millis())
+                    )
 
                 def compute_vars(image):
                     model_obj = Image.from_landsat_c1_sr(
-                        sr_image=ee.Image(image), **self.model_args)
+                        sr_image=ee.Image(image), **self.model_args
+                    )
                     return model_obj.calculate(variables)
 
                 # Skip going into image class if variables is not set so raw
@@ -391,18 +395,22 @@ class Collection():
 
                 # Time filters are to remove bad (L5) and pre-op (L8) images
                 if 'LT05' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.lt(
-                        'system:time_start', ee.Date('2011-12-31').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.lt('system:time_start', ee.Date('2011-12-31').millis())
+                    )
                 elif 'LE07' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.lt(
-                        'system:time_start', ee.Date('2022-01-01').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.lt('system:time_start', ee.Date('2022-01-01').millis())
+                    )
                 elif 'LC08' in coll_id:
-                    input_coll = input_coll.filter(ee.Filter.gt(
-                        'system:time_start', ee.Date('2013-04-01').millis()))
+                    input_coll = input_coll.filter(
+                        ee.Filter.gt('system:time_start', ee.Date('2013-04-01').millis())
+                    )
 
                 def compute_vars(image):
                     model_obj = Image.from_landsat_c1_toa(
-                        toa_image=ee.Image(image), **self.model_args)
+                        toa_image=ee.Image(image), **self.model_args
+                    )
                     return model_obj.calculate(variables)
 
                 # Skip going into image class if variables is not set so raw
@@ -445,9 +453,15 @@ class Collection():
 
         return self._build(variables=variables)
 
-    def interpolate(self, variables=None, t_interval='custom',
-                    interp_method='linear', interp_days=32, use_joins=False,
-                    **kwargs):
+    def interpolate(
+            self,
+            variables=None,
+            t_interval='custom',
+            interp_method='linear',
+            interp_days=32,
+            use_joins=False,
+            **kwargs
+            ):
         """
 
         Parameters
@@ -563,9 +577,11 @@ class Collection():
             # Assume a string source is a single image collection ID
             #   not a list of collection IDs or ee.ImageCollection
             daily_et_ref_coll_id = self.model_args['et_reference_source']
-            daily_et_ref_coll = ee.ImageCollection(daily_et_ref_coll_id) \
-                .filterDate(start_date, end_date) \
+            daily_et_ref_coll = (
+                ee.ImageCollection(daily_et_ref_coll_id)
+                .filterDate(start_date, end_date)
                 .select([self.model_args['et_reference_band']], ['et_reference'])
+            )
         # elif isinstance(self.model_args['et_reference_source'], computedobject.ComputedObject):
         #     # Interpret computed objects as image collections
         #     daily_et_ref_coll = self.model_args['et_reference_source'] \
@@ -654,8 +670,7 @@ class Collection():
             def compute_et(img):
                 """This function assumes et_reference and et_fraction are present"""
                 # TODO: Should ETr be mapped to the et_fraction band here?
-                et_img = img.select(['et_fraction']) \
-                    .multiply(img.select(['et_reference']))
+                et_img = img.select(['et_fraction']).multiply(img.select(['et_reference']))
                 return img.addBands(et_img.rename('et'))
             daily_coll = daily_coll.map(compute_et)
 
@@ -711,7 +726,8 @@ class Collection():
             if 'et_fraction' in variables:
                 # Compute average et fraction over the aggregation period
                 image_list.append(
-                    et_img.divide(et_reference_img).rename(['et_fraction']).float())
+                    et_img.divide(et_reference_img).rename(['et_fraction']).float()
+                )
             if 'ndvi' in variables:
                 # Compute average ndvi over the aggregation period
                 ndvi_img = daily_coll \
@@ -785,7 +801,8 @@ class Collection():
         elif t_interval.lower() == 'custom':
             # Returning an ImageCollection to be consistent
             return ee.ImageCollection(aggregate_image(
-                agg_start_date=start_date, agg_end_date=end_date,
+                agg_start_date=start_date,
+                agg_end_date=end_date,
                 date_format='YYYYMMdd',
             ))
 

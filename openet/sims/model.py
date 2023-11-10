@@ -86,23 +86,16 @@ class Model():
         #   instead of as lazy properties below
         self.crop_data = self._crop_data()
         self.crop_type = self._crop_type()
-        self.crop_class = crop_data_image(
-            'crop_class', self.crop_type, self.crop_data, 0)
+        self.crop_class = crop_data_image('crop_class', self.crop_type, self.crop_data, 0)
 
         # Manually set the crop data parameter images as class properties
         # Set default values for some properties to ensure fr == 1
-        self.h_max = crop_data_image(
-            'h_max', self.crop_type, self.crop_data)
-        self.m_l = crop_data_image(
-            'm_l', self.crop_type, self.crop_data)
-        self.fr_mid = crop_data_image(
-            'fr_mid', self.crop_type, self.crop_data, 1)
-        self.fr_end = crop_data_image(
-            'fr_end', self.crop_type, self.crop_data, 1)
-        self.ls_start = crop_data_image(
-            'ls_start', self.crop_type, self.crop_data, 1)
-        self.ls_stop = crop_data_image(
-            'ls_stop', self.crop_type, self.crop_data, 365)
+        self.h_max = crop_data_image('h_max', self.crop_type, self.crop_data)
+        self.m_l = crop_data_image('m_l', self.crop_type, self.crop_data)
+        self.fr_mid = crop_data_image('fr_mid', self.crop_type, self.crop_data, 1)
+        self.fr_end = crop_data_image('fr_end', self.crop_type, self.crop_data, 1)
+        self.ls_start = crop_data_image('ls_start', self.crop_type, self.crop_data, 1)
+        self.ls_stop = crop_data_image('ls_stop', self.crop_type, self.crop_data, 365)
         # setattr('h_max', crop_data_image(
         #     'h_max', self.crop_type, self.crop_data))
 
@@ -110,8 +103,7 @@ class Model():
         # TODO: Should type be checked (and exception raised) here or in fc()?
         #   Being raised in fc() for now since it is not a lazy property
         # if self.reflectance_type not in ['SR', 'TOA']:
-        #     raise ValueError(
-        #         f'unsupported reflectance type: {reflectance_type}')
+        #     raise ValueError(f'unsupported reflectance type: {reflectance_type}')
 
     # CGM - It would be nice if kc and fc were lazy properties but then fc and
     #   ndvi would need to part of self (inherited from Image?).
@@ -156,8 +148,7 @@ class Model():
 
         # Apply generic crop class Kc functions
         kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
-        kc = kc.where(self.crop_class.eq(2),
-                      self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
+        kc = kc.where(self.crop_class.eq(2), self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
         kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
         kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
         kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
@@ -217,8 +208,7 @@ class Model():
         elif self.reflectance_type == 'TOA':
             fc = ndvi.multiply(1.465).subtract(0.139)
         else:
-            raise ValueError(
-                f'Unsupported reflectance type: {self.reflectance_type}')
+            raise ValueError(f'Unsupported reflectance type: {self.reflectance_type}')
 
         return fc.clamp(0, 1).rename(['fc'])
 
@@ -430,8 +420,7 @@ class Model():
         the Kc is adjusted to 0 for lower NDVI pixels.
 
         """
-        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01)\
-            .rename(['kc'])
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01).rename(['kc'])
 
     def kc_grass_pasture(self, fc, ndvi):
         """Crop coefficient for grass/pasture crops (class 7)
@@ -452,8 +441,7 @@ class Model():
         Kc for low ndvi kcb = fc, for high ndvi we use the
         generic ndvi equation
         """
-        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01)\
-            .rename(['kc'])
+        return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01).rename(['kc'])
 
     def _kcb(self, kd, kc_min=0.15):
         """Basal crop coefficient (Kcb)
@@ -487,17 +475,19 @@ class Model():
 
         """
         # Reduction factor for adjusting Kcb of tree crops
-        fr = self.ls_start.subtract(self.doy)\
-            .multiply(self.fr_mid.subtract(self.fr_end))\
-            .divide(self.ls_stop.subtract(self.ls_start))\
-            .add(self.fr_mid)\
-            .max(self.fr_end).min(self.fr_mid)
+        fr = (
+            self.ls_start.subtract(self.doy)
+            .multiply(self.fr_mid.subtract(self.fr_end))
+            .divide(self.ls_stop.subtract(self.ls_start))
+            .add(self.fr_mid)
+            .max(self.fr_end)
+            .min(self.fr_mid)
+        )
 
         # Kcb during peak plant growth (near full cover)
         kcb_full = self.h_max.multiply(0.1).add(1).min(1.2).multiply(fr)
 
-        return kd.multiply(kcb_full.subtract(kc_min)).add(kc_min)\
-            .rename(['kcb'])
+        return kd.multiply(kcb_full.subtract(kc_min)).add(kc_min).rename(['kcb'])
 
     def _kd_row_crop(self, fc):
         """Density coefficient for annual row crops (class 1)
@@ -524,13 +514,15 @@ class Model():
 
         """
         # First calculation is the fc.divide(0.7).lte(1) case
-        return fc.multiply(self.m_l)\
-            .min(fc.pow(fc.divide(0.7).multiply(self.h_max).add(1).pow(-1)))\
+        return (
+            fc.multiply(self.m_l)
+            .min(fc.pow(fc.divide(0.7).multiply(self.h_max).add(1).pow(-1)))
             .where(
                 fc.divide(0.7).gt(1),
-                fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1))))\
-            .min(1)\
+                fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1))))
+            .min(1)
             .rename(['kd'])
+        )
 
     def _kd_vine(self, fc):
         """Crop coefficient for vine crops (class 2)
@@ -575,12 +567,12 @@ class Model():
 
         """
         # First calculation is the fc.gt(0.5) case
-        return fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1)))\
-            .where(
-                fc.lte(0.5),
-                fc.multiply(self.m_l).min(fc.pow(self.h_max.pow(-1))))\
-            .min(1)\
+        return (
+            fc.multiply(self.m_l).min(fc.pow(self.h_max.add(1).pow(-1)))
+            .where(fc.lte(0.5), fc.multiply(self.m_l).min(fc.pow(self.h_max.pow(-1))))
+            .min(1)
             .rename(['kd'])
+        )
 
 
 def crop_data_image(param_name, crop_type, crop_data, default_value=None):
@@ -609,13 +601,13 @@ def crop_data_image(param_name, crop_type, crop_data, default_value=None):
     data_dict = {
         c_type: round(c_data[param_name] * data.int_scalar)
         for c_type, c_data in crop_data.items()
-        if param_name in c_data.keys()}
+        if param_name in c_data.keys()
+    }
     from_list, to_list = zip(*sorted(data_dict.items()))
 
     # Scale the default value if it is set
     if default_value is not None:
-        output = crop_type.remap(from_list, to_list,
-                                 default_value * data.int_scalar)
+        output = crop_type.remap(from_list, to_list, default_value * data.int_scalar)
     else:
         output = crop_type.remap(from_list, to_list)
 

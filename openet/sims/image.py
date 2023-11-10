@@ -1,16 +1,3 @@
-# title           : image.py
-# description     : Script used to run the Earth Engine version of SIMS.
-#                   This is based on the Charles Morton's openET model
-#                   template(https://github.com/Open-ET/openet-ndvi-beta).
-#                   This is an early version that comes without support and
-#                   might change at anytime without notice
-# author          : Alberto Guzman
-# date            : 03-01-2017
-# version         : 0.1
-# usage           :
-# notes           :
-# python_version  : 3.2
-
 import ee
 import openet.core.common
 
@@ -148,7 +135,8 @@ class Image():
         # CGM - Model class could inherit these from Image instead of passing them
         #   Could pass time_start instead of separate year and doy
         self.model = Model(
-            year=self._year, doy=self._doy,
+            year=self._year,
+            doy=self._doy,
             crop_type_source=crop_type_source,
             crop_type_remap=crop_type_remap,
             crop_type_kc_flag=crop_type_kc_flag,
@@ -231,21 +219,26 @@ class Image():
             et_reference_img = ee.Image.constant(self.et_reference_source)
         elif type(self.et_reference_source) is str:
             # Assume a string source is an image collection ID (not an image ID)
-            et_reference_coll = ee.ImageCollection(self.et_reference_source) \
-                .filterDate(self._start_date, self._end_date) \
+            et_reference_coll = (
+                ee.ImageCollection(self.et_reference_source)
+                .filterDate(self._start_date, self._end_date)
                 .select([self.et_reference_band])
+            )
             et_reference_img = ee.Image(et_reference_coll.first())
             if self.et_reference_resample in ['bilinear', 'bicubic']:
                 et_reference_img = et_reference_img.resample(self.et_reference_resample)
         else:
-            raise ValueError(f'unsupported et_reference_source: '
-                             f'{self.et_reference_source}')
+            raise ValueError(
+                f'unsupported et_reference_source: {self.et_reference_source}'
+            )
 
         if self.et_reference_factor:
             et_reference_img = et_reference_img.multiply(self.et_reference_factor)
 
-        return self.ndvi.multiply(0).add(et_reference_img) \
+        return (
+            self.ndvi.multiply(0).add(et_reference_img)
             .rename(['et_reference']).set(self._properties)
+        )
 
     @lazy_property
     def et(self):
@@ -256,8 +249,7 @@ class Image():
         ee.Image
 
         """
-        return self.kc.multiply(self.et_reference) \
-            .rename(['et']).set(self._properties)
+        return self.kc.multiply(self.et_reference).rename(['et']).set(self._properties)
 
     @lazy_property
     def crop_class(self):
@@ -269,9 +261,10 @@ class Image():
 
         """
         # Map the the crop class values to the NDVI image
-        return self.ndvi.multiply(0) \
-            .add(self.model.crop_class) \
+        return (
+            self.ndvi.multiply(0).add(self.model.crop_class)
             .rename('crop_class').set(self._properties)
+        )
 
     @lazy_property
     def crop_type(self):
@@ -284,9 +277,7 @@ class Image():
         """
         # Map the the crop class values to the NDVI image
         # Crop type image ID property is set in model function
-        return self.ndvi.multiply(0) \
-            .add(self.model.crop_type) \
-            .rename(['crop_type'])
+        return self.ndvi.multiply(0).add(self.model.crop_type).rename(['crop_type'])
 
     @lazy_property
     def fc(self):
@@ -297,8 +288,7 @@ class Image():
         ee.Image
 
         """
-        return self.model.fc(self.ndvi) \
-            .rename(['fc']).set(self._properties)
+        return self.model.fc(self.ndvi).rename(['fc']).set(self._properties)
 
     @lazy_property
     def kc(self):
@@ -309,8 +299,7 @@ class Image():
         ee.Image
 
         """
-        return self.model.kc(self.ndvi) \
-            .rename(['kc']).set(self._properties)
+        return self.model.kc(self.ndvi).rename(['kc']).set(self._properties)
 
     @lazy_property
     def mask(self):
@@ -323,8 +312,10 @@ class Image():
         ee.Image
 
         """
-        return self.kc.multiply(0).add(1).updateMask(1) \
+        return (
+            self.kc.multiply(0).add(1).updateMask(1)
             .rename(['mask']).set(self._properties).uint8()
+        )
 
     @lazy_property
     def ndvi(self):
@@ -352,9 +343,11 @@ class Image():
         ee.Image
 
         """
-        return self.mask\
-            .double().multiply(0).add(utils.date_to_time_0utc(self._date))\
+        return (
+            self.mask
+            .double().multiply(0).add(utils.date_to_time_0utc(self._date))
             .rename(['time']).set(self._properties)
+        )
 
     @classmethod
     def from_image_id(cls, image_id, **kwargs):
@@ -436,29 +429,31 @@ class Image():
             'LANDSAT_7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'pixel_qa'],
             'LANDSAT_8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'pixel_qa'],
         })
-        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
-                        'pixel_qa']
-        prep_image = sr_image\
-            .select(input_bands.get(spacecraft_id), output_bands)\
+        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir', 'pixel_qa']
+        prep_image = (
+            sr_image
+            .select(input_bands.get(spacecraft_id), output_bands)
             .multiply([0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.1, 1])
+        )
 
         cloud_mask = openet.core.common.landsat_c1_sr_cloud_mask(
-            sr_image, **cloudmask_args)
+            sr_image, **cloudmask_args
+        )
 
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
-        input_image = ee.Image([
-            cls._ndvi(prep_image),
-        ])
+        input_image = ee.Image([cls._ndvi(prep_image)])
 
         # Apply the cloud mask and add properties
-        input_image = input_image\
-            .updateMask(cloud_mask)\
+        input_image = (
+            input_image
+            .updateMask(cloud_mask)
             .set({
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),
                 'system:id': sr_image.get('system:id'),
             })
+        )
 
         return cls(input_image, reflectance_type='SR', **kwargs)
 
@@ -489,17 +484,15 @@ class Image():
         input_bands = ee.Dictionary({
             'LANDSAT_4': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'BQA'],
             'LANDSAT_5': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6', 'BQA'],
-            'LANDSAT_7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6_VCID_1',
-                          'BQA'],
+            'LANDSAT_7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7', 'B6_VCID_1', 'BQA'],
             'LANDSAT_8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'BQA'],
         })
-        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir',
-                        'BQA']
-        prep_image = toa_image\
-            .select(input_bands.get(spacecraft_id), output_bands)
+        output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'tir', 'BQA']
+        prep_image = toa_image.select(input_bands.get(spacecraft_id), output_bands)
 
         cloud_mask = openet.core.common.landsat_c1_toa_cloud_mask(
-            toa_image, **cloudmask_args)
+            toa_image, **cloudmask_args
+        )
 
         # Build the input image
         # Eventually send the BQA band or a cloud mask through also
@@ -508,13 +501,15 @@ class Image():
         ])
 
         # Apply the cloud mask and add properties
-        input_image = input_image\
-            .updateMask(cloud_mask)\
+        input_image = (
+            input_image
+            .updateMask(cloud_mask)
             .set({
                 'system:index': toa_image.get('system:index'),
                 'system:time_start': toa_image.get('system:time_start'),
                 'system:id': toa_image.get('system:id'),
             })
+        )
 
         return cls(input_image, reflectance_type='TOA', **kwargs)
 
@@ -561,11 +556,13 @@ class Image():
         })
         output_bands = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2',
                         'tir', 'QA_PIXEL', 'QA_RADSAT']
-        prep_image = sr_image\
-            .select(input_bands.get(spacecraft_id), output_bands)\
+        prep_image = (
+            sr_image
+            .select(input_bands.get(spacecraft_id), output_bands)
             .multiply([0.0000275, 0.0000275, 0.0000275, 0.0000275, 0.0000275,
-                       0.0000275, 0.00341802, 1, 1])\
+                       0.0000275, 0.00341802, 1, 1])
             .add([-0.2, -0.2, -0.2, -0.2, -0.2, -0.2, 149.0, 0, 0])
+        )
 
         # Default the cloudmask flags to True if they were not
         # Eventually these will probably all default to True in openet.core
@@ -585,18 +582,18 @@ class Image():
 
         # Build the input image
         # Eventually send the QA band or a cloud mask through also
-        input_image = ee.Image([
-            cls._ndvi(prep_image),
-        ])
+        input_image = ee.Image([cls._ndvi(prep_image)])
 
         # Apply the cloud mask and add properties
-        input_image = input_image\
-            .updateMask(cloud_mask)\
+        input_image = (
+            input_image
+            .updateMask(cloud_mask)
             .set({
                 'system:index': sr_image.get('system:index'),
                 'system:time_start': sr_image.get('system:time_start'),
                 'system:id': sr_image.get('system:id'),
             })
+        )
 
         return cls(input_image, reflectance_type='SR', **kwargs)
 
@@ -614,5 +611,4 @@ class Image():
         ee.Image
 
         """
-        return landsat_image.normalizedDifference(['nir', 'red'])\
-            .rename(['ndvi'])
+        return landsat_image.normalizedDifference(['nir', 'red']).rename(['ndvi'])

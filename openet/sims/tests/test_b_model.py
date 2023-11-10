@@ -16,16 +16,20 @@ DOY = 197
 #   I'm not sure how to make them fixtures and allow input parameters
 # CGM - Setting default crop_type_source to 2017 image to simplify testing
 #   but the default in the Model class init is the full collection
-def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
-                       crop_type_source=f'USDA/NASS/CDL/{YEAR}',
-                       crop_type_kc_flag=False,
-                       crop_type_annual_skip_flag=False,
-                       mask_non_ag_flag=False,
-                       water_kc_flag=True,
-                       reflectance_type='SR',
-                       ):
+def default_model_args(
+        year=YEAR,
+        doy=DOY,
+        crop_type_remap='CDL',
+        crop_type_source=f'USDA/NASS/CDL/{YEAR}',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        mask_non_ag_flag=False,
+        water_kc_flag=True,
+        reflectance_type='SR',
+        ):
     return {
-        'year': year, 'doy': doy,
+        'year': year,
+        'doy': doy,
         'crop_type_source': crop_type_source,
         'crop_type_remap': crop_type_remap,
         'crop_type_kc_flag': crop_type_kc_flag,
@@ -36,16 +40,20 @@ def default_model_args(year=YEAR, doy=DOY, crop_type_remap='CDL',
     }
 
 
-def default_model_obj(year=YEAR, doy=DOY, crop_type_remap='CDL',
-                      crop_type_source=f'USDA/NASS/CDL/{YEAR}',
-                      crop_type_kc_flag=False,
-                      crop_type_annual_skip_flag=False,
-                      mask_non_ag_flag=False,
-                      water_kc_flag=True,
-                      reflectance_type='SR',
-                      ):
+def default_model_obj(
+        year=YEAR,
+        doy=DOY,
+        crop_type_remap='CDL',
+        crop_type_source=f'USDA/NASS/CDL/{YEAR}',
+        crop_type_kc_flag=False,
+        crop_type_annual_skip_flag=False,
+        mask_non_ag_flag=False,
+        water_kc_flag=True,
+        reflectance_type='SR',
+        ):
     return model.Model(**default_model_args(
-        year=ee.Number(year), doy=ee.Number(doy),
+        year=ee.Number(year),
+        doy=ee.Number(doy),
         crop_type_source=crop_type_source,
         crop_type_remap=crop_type_remap,
         crop_type_kc_flag=crop_type_kc_flag,

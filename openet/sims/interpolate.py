@@ -182,14 +182,18 @@ def from_scene_et_fraction(
     elif type(et_reference_source) is str:
         # Assume a string source is a single image collection ID
         #   not a list of collection IDs or ee.ImageCollection
-        daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-            .filterDate(start_date, end_date) \
+        daily_et_ref_coll = (
+            ee.ImageCollection(et_reference_source)
+            .filterDate(start_date, end_date)
             .select([et_reference_band], ['et_reference'])
+        )
     # elif isinstance(et_reference_source, computedobject.ComputedObject):
     #     # Interpret computed objects as image collections
-    #     daily_et_ref_coll = ee.ImageCollection(et_reference_source) \
-    #         .filterDate(self.start_date, self.end_date) \
+    #     daily_et_ref_coll = (
+    #         ee.ImageCollection(et_reference_source)
+    #         .filterDate(self.start_date, self.end_date)
     #         .select([et_reference_band])
+    #     )
     else:
         raise ValueError(f'unsupported et_reference_source: {et_reference_source}')
 
@@ -197,9 +201,11 @@ def from_scene_et_fraction(
     # CGM - Resampling is not working correctly so not including for now
     if et_reference_factor and et_reference_factor != 1:
         def et_reference_adjust(input_img):
-            return input_img.multiply(et_reference_factor) \
-                .copyProperties(input_img) \
+            return (
+                input_img.multiply(et_reference_factor)
+                .copyProperties(input_img)
                 .set({'system:time_start': input_img.get('system:time_start')})
+            )
 
         daily_et_ref_coll = daily_et_ref_coll.map(et_reference_adjust)
 
@@ -231,7 +237,7 @@ def from_scene_et_fraction(
         aggregate_coll = openet.core.interpolate.aggregate_to_daily(
             image_coll=scene_coll.select(['mask']),
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
         )
         # The following is needed because the aggregate collection can be
         #   empty if there are no scenes in the target date range but there
@@ -315,8 +321,8 @@ def from_scene_et_fraction(
         if 'et_fraction' in variables:
             # Compute average et fraction over the aggregation period
             image_list.append(
-                et_img.divide(et_reference_img).rename(
-                    ['et_fraction']).float())
+                et_img.divide(et_reference_img).rename(['et_fraction']).float()
+            )
         if 'ndvi' in variables:
             # Compute average ndvi over the aggregation period
             ndvi_img = daily_coll \
@@ -381,7 +387,8 @@ def from_scene_et_fraction(
             return aggregate_image(
                 agg_start_date=agg_start_date,
                 agg_end_date=ee.Date(agg_start_date).advance(1, 'day'),
-                date_format='YYYYMMdd')
+                date_format='YYYYMMdd',
+            )
 
         return ee.ImageCollection(daily_coll.map(agg_daily))
 
@@ -399,7 +406,8 @@ def from_scene_et_fraction(
             return aggregate_image(
                 agg_start_date=agg_start_date,
                 agg_end_date=ee.Date(agg_start_date).advance(1, 'month'),
-                date_format='YYYYMM')
+                date_format='YYYYMM',
+            )
 
         return ee.ImageCollection(month_list.map(agg_monthly))
 
@@ -416,25 +424,31 @@ def from_scene_et_fraction(
             return aggregate_image(
                 agg_start_date=agg_start_date,
                 agg_end_date=ee.Date(agg_start_date).advance(1, 'year'),
-                date_format='YYYY')
+                date_format='YYYY',
+            )
 
         return ee.ImageCollection(year_list.map(agg_annual))
 
     elif t_interval.lower() == 'custom':
         # Returning an ImageCollection to be consistent
         return ee.ImageCollection(aggregate_image(
-            agg_start_date=start_date, agg_end_date=end_date,
-            date_format='YYYYMMdd'))
+            agg_start_date=start_date,
+            agg_end_date=end_date,
+            date_format='YYYYMMdd',
+        ))
 
 
-def daily_ke(daily_coll,
-             model_args,  # CGM - This parameter isn't used
-             precip_source='IDAHO_EPSCOR/GRIDMET',
-             precip_band='pr',
-             fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
-             fc_band='b1',
-             wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
-             wp_band='b1', **kwargs):
+def daily_ke(
+        daily_coll,
+        model_args,  # CGM - This parameter isn't used
+        precip_source='IDAHO_EPSCOR/GRIDMET',
+        precip_band='pr',
+        fc_source='projects/eeflux/soils/gsmsoil_mu_a_fc_10cm_albers_100',
+        fc_band='b1',
+        wp_source='projects/eeflux/soils/gsmsoil_mu_a_wp_10cm_albers_100',
+        wp_band='b1',
+        **kwargs
+        ):
     """Compute daily Ke values by simulating evaporable zone water balance
 
     Parameters
