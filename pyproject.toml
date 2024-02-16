@@ -1,8 +1,8 @@
 [project]
 name = "openet-sims"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
-  { name="Alberto Guzman", email="aguzman@csumb.edu" },
+    { name = "Alberto Guzman", email = "aguzman@csumb.edu" },
 ]
 description = "Earth Engine based SIMS Model"
 readme = "README.rst"
@@ -16,8 +16,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "earthengine-api>=0.1.310",
-    "openet-core>=0.0.16",
+    "earthengine-api>=0.1.364",
+    "openet-core>=0.2.0",
     "python-dateutil",
     "importlib-metadata; python_version <= '3.7'",
 ]

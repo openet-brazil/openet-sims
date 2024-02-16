@@ -353,9 +353,10 @@ class Model():
             5:1709-1721.  [FIG 2b]
 
         """
-        return fc\
-            .expression("((b(0) ** 2) * -0.4771) + (1.4047 * b(0)) + 0.15")\
+        return (
+            fc.expression("((b(0) ** 2) * -0.4771) + (1.4047 * b(0)) + 0.15")
             .rename(['kc'])
+        )
 
     def kc_tree(self, fc):
         """General crop coefficient for tree crops (class 3)
@@ -417,7 +418,7 @@ class Model():
         Notes
         -----
         Kc is computed using the generic annual crop equation (class 1) but
-        the Kc is adjusted to 0 for lower NDVI pixels.
+        the Kc is set to the Fc for lower NDVI pixels.
 
         """
         return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01).rename(['kc'])
@@ -438,8 +439,9 @@ class Model():
 
         Notes
         -----
-        Kc for low ndvi kcb = fc, for high ndvi we use the
-        generic ndvi equation
+        Kc is computed using the generic annual crop equation (class 1) but
+        the Kc is set to the Fc for lower NDVI pixels.
+
         """
         return self.kc_row_crop(fc).where(ndvi.lte(0.35), fc).max(0.01).rename(['kc'])
 
