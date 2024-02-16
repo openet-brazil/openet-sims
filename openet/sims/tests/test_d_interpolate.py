@@ -10,8 +10,7 @@ import openet.sims.utils as utils
 import openet.sims as sims
 
 
-def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5],
-               ndvi=[0.6, 0.6, 0.6]):
+def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5], ndvi=[0.6, 0.6, 0.6]):
     """Return a generic scene collection to test scene interpolation functions
 
     Parameters
@@ -27,7 +26,7 @@ def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5],
     ee.ImageCollection
 
     """
-    img = ee.Image('LANDSAT/LC08/C01/T1_SR/LC08_044033_20170716') \
+    img = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716') \
         .select(['B2']).double().multiply(0)
     mask = img.add(1).updateMask(1).uint8()
 
@@ -208,7 +207,6 @@ def test_from_scene_et_fraction_t_interval_no_value():
 @pytest.mark.parametrize(
     'landsat_coll_id',
     [
-        'LANDSAT/LC08/C01/T1_SR',
         'LANDSAT/LC08/C02/T1_L2',
     ]
 )
@@ -226,18 +224,12 @@ def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
     zero = landsat_coll.first().select(1).double().multiply(0)
 
     def make_et_frac(img):
-        if 'C01' in landsat_coll_id:
-            et_img = sims.Image.from_landsat_c1_sr(
-                img,
-                et_reference_source=et_reference_source,
-                et_reference_band=et_reference_band,
-            ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
-        elif 'C02' in landsat_coll_id:
-            et_img = sims.Image.from_landsat_c2_sr(
-                img,
-                et_reference_source=et_reference_source,
-                et_reference_band=et_reference_band,
-            ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+        # if 'C02' in landsat_coll_id:
+        et_img = sims.Image.from_landsat_c2_sr(
+            img,
+            et_reference_source=et_reference_source,
+            et_reference_band=et_reference_band,
+        ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
 
         time = ee.Number(img.get('system:time_start'))
         et_img = et_img.addBands([zero.add(time).rename('time')])
@@ -289,10 +281,11 @@ comp_df['et_fraction'] = comp_df['etc'] / comp_df['eto']
 
 @pytest.fixture
 def synth_test_imgs():
-    landsat_coll_id = 'LANDSAT/LC08/C01/T1_SR'
-    landsat_coll = ee.ImageCollection(landsat_coll_id)\
-        .filterDate(start_date, end_date)\
+    landsat_coll = (
+        ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+        .filterDate(start_date, end_date)
         .filterBounds(ee.Geometry.Point(TEST_POINT))
+    )
     mask = landsat_coll.first().select(['B2']).double().multiply(0)
 
     test_imgs = []
@@ -300,12 +293,14 @@ def synth_test_imgs():
         # The time band needs to be 0 UTC for the interpolation to work correctly
         date = ee.Date.fromYMD(2018, 1, 1).advance(row.doy-1, 'days')
         time = date.advance(16, 'hours')
-        test_img = ee.Image([mask.add(ee.Number(date.millis())),
-                             mask.add(row.ndvi_interp),
-                             mask.add(row.kc), mask.add(row.eto)])\
-            .rename(['time', 'ndvi', 'et_fraction', 'et_reference'])\
+        test_img = (
+            ee.Image([mask.add(ee.Number(date.millis())),
+                      mask.add(row.ndvi_interp),
+                      mask.add(row.kc), mask.add(row.eto)])
+            .rename(['time', 'ndvi', 'et_fraction', 'et_reference'])
             .set({'system:time_start': ee.Number(time.millis()),
                   'system:index': date.format('yyyyMMdd')})
+        )
         test_imgs.append(test_img)
 
     return ee.ImageCollection(test_imgs)
@@ -313,18 +308,21 @@ def synth_test_imgs():
 
 @pytest.fixture
 def synth_precip_imgs():
-    mask = ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')\
-        .filterDate(start_date, end_date)\
+    mask = (
+        ee.ImageCollection('IDAHO_EPSCOR/GRIDMET')
+        .filterDate(start_date, end_date)
         .first().select(['pr']).multiply(0)
+    )
 
     precip_imgs = []
     for index, row in comp_df.iterrows():
         # Add 6 hours to mimic GRIDMET start time
-        date = ee.Date.fromYMD(2018, 1, 1).advance(row.doy-1, 'days')\
-            .advance(6, 'hours')
-        precip_img = mask.add(row.pr).rename(['pr'])\
+        date = ee.Date.fromYMD(2018, 1, 1).advance(row.doy-1, 'days').advance(6, 'hours')
+        precip_img = (
+            mask.add(row.pr).rename(['pr'])
             .set({'system:time_start': ee.Number(date.millis()),
                   'system:index': date.format('yyyyMMdd')})
+        )
         precip_imgs.append(precip_img)
 
     # Precipitation collection needs extra images at the end since the

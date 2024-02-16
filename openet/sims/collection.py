@@ -147,20 +147,6 @@ class Collection():
             'LANDSAT/LC08/C02/T1_L2',
             'LANDSAT/LC09/C02/T1_L2',
         ]
-        self._landsat_c1_sr_collections = [
-            'LANDSAT/LT04/C01/T1_SR',
-            'LANDSAT/LT05/C01/T1_SR',
-            'LANDSAT/LE07/C01/T1_SR',
-            'LANDSAT/LC08/C01/T1_SR',
-        ]
-        self._landsat_c1_toa_collections = [
-            'LANDSAT/LT04/C01/T1_TOA',
-            'LANDSAT/LT05/C01/T1_TOA',
-            'LANDSAT/LE07/C01/T1_TOA',
-            'LANDSAT/LC08/C01/T1_TOA',
-            'LANDSAT/LE07/C01/T1_RT_TOA',
-            'LANDSAT/LC08/C01/T1_RT_TOA',
-        ]
 
         # If collections is a string, place in a list
         if type(self.collections) is str:
@@ -168,9 +154,7 @@ class Collection():
 
         # Check that collection IDs are supported
         for coll_id in self.collections:
-            if (coll_id not in self._landsat_c2_sr_collections and
-                    coll_id not in self._landsat_c1_toa_collections and
-                    coll_id not in self._landsat_c1_sr_collections):
+            if coll_id not in self._landsat_c2_sr_collections:
                 raise ValueError(f'unsupported collection: {coll_id}')
 
         # CGM - This test is not needed since only Landsat SR collections are supported
