@@ -384,9 +384,9 @@ def test_Image_from_landsat_c2_sr_kc():
 
 def test_Image_from_landsat_c2_sr_et():
     """Test if ET can be built from a Landsat images"""
+    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(
-        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
-        et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='etr').et)
+        image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='etr').et)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
@@ -410,7 +410,7 @@ def test_Image_from_landsat_c2_sr_scaling():
               'system:index': ee.String(sr_img.get('system:index')),
               'system:time_start': ee.Number(sr_img.get('system:time_start'))})
     )
-    # cloud score masking do not work with a constant image
+    # cloud score masking and filter_flag option do not work with a constant image
     #   and must be explicitly set to False
     output = utils.constant_image_value(sims.Image.from_landsat_c2_sr(
         input_img, cloudmask_args={'cloud_score_flag': False, 'filter_flag': False}).ndvi)

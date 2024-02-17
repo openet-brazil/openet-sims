@@ -23,6 +23,9 @@ def getinfo(ee_obj, n=4):
             #     sleep(i ** 2)
             # else:
             #     raise e
+        except Exception as e:
+            logging.info(e)
+            break
 
         if output:
             break

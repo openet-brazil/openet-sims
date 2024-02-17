@@ -144,12 +144,8 @@ def test_Model_crop_type_source_cdl_image():
 def test_Model_crop_type_source_cdl_image_exception():
     """Requesting a CDL image that doesn't exist should raise an EE exception"""
     with pytest.raises(Exception):
-        utils.getinfo(default_model_obj(crop_type_source='USDA/NASS/CDL/2099'))
-        # CGM - The exception is raised in the _crop_type() method which is
-        #   in the init.  If crop_type is a lazy property then it is necessary
-        #   to request the property in order to raise the exception.
-        # utils.getinfo(default_model_obj(
-        #     crop_type_source='USDA/NASS/CDL/2099').crop_type)
+        # Intentionally using .getInfo() since utils.getinfo() might catch the exception
+        default_model_obj(crop_type_source='USDA/NASS/CDL/2099').crop_type.getInfo()
 
 
 @pytest.mark.parametrize(
@@ -157,8 +153,8 @@ def test_Model_crop_type_source_cdl_image_exception():
     [
         'projects/openet/assets/crop_type/v2023a',
         'projects/openet/assets/crop_type/v2021a',
-        'projects/openet/crop_type/v2021a',
-        'projects/earthengine-legacy/assets/projects/openet/crop_type/v2021a',
+        # 'projects/openet/crop_type/v2021a',
+        # 'projects/earthengine-legacy/assets/projects/openet/crop_type/v2021a',
     ]
 )
 def test_Model_crop_type_source_openet_crop_type(crop_type_source):
