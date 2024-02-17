@@ -391,12 +391,12 @@ class Image():
 
     @classmethod
     def from_landsat_c2_sr(cls, sr_image, cloudmask_args={}, **kwargs):
-        """Construct a SIMS Image instance from a Landsat C02 SR image
+        """Construct a SIMS Image instance from a Landsat C02 level 2 (SR) image
 
         Parameters
         ----------
         sr_image : ee.Image, str
-            A raw Landsat Collection 2 SR image or image ID.
+            A raw Landsat Collection 2 level 2 (SR) image or image ID.
         cloudmask_args : dict
             keyword arguments to pass through to cloud mask function
         kwargs : dict
@@ -446,7 +446,9 @@ class Image():
         if 'cloud_score_flag' not in cloudmask_args.keys():
             cloudmask_args['cloud_score_flag'] = True
         if 'cloud_score_pct' not in cloudmask_args.keys():
-            cloudmask_args['cloud_score_pct'] = True
+            cloudmask_args['cloud_score_pct'] = 100
+        if 'filter_flag' not in cloudmask_args.keys():
+            cloudmask_args['filter_flag'] = True
         # QA_RADSAT band will need to be added above if applying saturated masking
         # if 'saturated_flag' not in cloudmask_args.keys():
         #     cloudmask_args['saturated_flag'] = False

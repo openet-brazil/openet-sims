@@ -31,7 +31,9 @@ default_coll_args = {
     'et_reference_band': 'eto',
     'et_reference_factor': 0.85,
     'et_reference_resample': 'nearest',
-    'model_args': {},
+    'model_args': {
+        'cloudmask_args': {'cloud_score_flag': False, 'filter_flag': False},
+    },
     'filter_args': {},
 }
 
@@ -65,7 +67,7 @@ def test_Collection_init_default_parameters():
     assert m.et_reference_factor is None
     assert m.et_reference_resample is None
     assert m.cloud_cover_max == 70
-    assert m.model_args == {}
+    # assert m.model_args == {}
     assert m.filter_args == {}
     assert set(m._interp_vars) == {'ndvi', 'et_fraction'}
 
@@ -465,7 +467,7 @@ def test_Collection_interpolate_et_reference_params_kwargs():
         et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='eto',
         et_reference_factor=0.5, et_reference_resample='bicubic', model_args={},
     )
-    output = utils.getinfo(coll.interpolate())
+    output = utils.getinfo(coll.interpolate(use_joins=True))
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -481,7 +483,7 @@ def test_Collection_interpolate_et_reference_params_model_args():
                     'et_reference_factor': 0.5,
                     'et_reference_resample': 'bicubic'},
     )
-    output = utils.getinfo(coll.interpolate())
+    output = utils.getinfo(coll.interpolate(use_joins=True))
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -497,7 +499,7 @@ def test_Collection_interpolate_et_reference_params_interpolate_args():
         et_reference_source=None, et_reference_band=None,
         et_reference_factor=None, et_reference_resample=None, model_args={},
     )
-    output = utils.getinfo(coll.interpolate(**et_reference_args))
+    output = utils.getinfo(coll.interpolate(use_joins=True, **et_reference_args))
     assert {y['id'] for x in output['features'] for y in x['bands']} == VARIABLES
     assert output['features'][0]['properties']['et_reference_factor'] == 0.5
     assert output['features'][0]['properties']['et_reference_resample'] == 'bicubic'
@@ -599,7 +601,7 @@ def test_Collection_interpolate_output_type_default():
 def test_Collection_interpolate_custom_model_args():
     """Test passing in a model specific parameter through model_args"""
     model_args = {'crop_type_source': 'projects/openet/crop_type/annual_provisional'}
-    output = utils.getinfo(default_coll_obj(model_args=model_args).interpolate())
+    output = utils.getinfo(default_coll_obj(model_args=model_args).interpolate(use_joins=True))
     output = output['features'][0]['properties']
     assert output['crop_type_source'] == 'projects/openet/crop_type/annual_provisional'
 

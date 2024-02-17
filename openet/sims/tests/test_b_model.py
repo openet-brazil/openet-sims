@@ -122,12 +122,9 @@ def test_Model_init_crop_data_images(parameter):
         [2007, 2008],
         [2008, 2008],
         [2016, 2016],
-        [2019, 2019],
-        [2020, 2020],
-        [2021, 2021],
-        [2022, 2022],
-        # TODO: Make this test dynamic since it will fail in 2024 when the 2023 CDL is released
-        [2023, 2022],
+        [2023, 2023],
+        # TODO: Make this test dynamic since it will fail in 2025 when the 2024 CDL is released
+        [2024, 2023],
     ]
 )
 def test_Model_crop_type_source_cdl_collection(year, expected):
@@ -158,11 +155,10 @@ def test_Model_crop_type_source_cdl_image_exception():
 @pytest.mark.parametrize(
     'crop_type_source',
     [
-        'projects/openet/crop_type/v2020c',
+        'projects/openet/assets/crop_type/v2023a',
+        'projects/openet/assets/crop_type/v2021a',
         'projects/openet/crop_type/v2021a',
         'projects/earthengine-legacy/assets/projects/openet/crop_type/v2021a',
-        'projects/openet/crop_type/annual_provisional',
-        'projects/earthengine-legacy/assets/projects/openet/crop_type/annual_provisional',
     ]
 )
 def test_Model_crop_type_source_openet_crop_type(crop_type_source):

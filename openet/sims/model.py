@@ -223,7 +223,7 @@ class Model():
                 to the Image year.
             CDL image ID for a specific year: 'USDA/NASS/CDL/2018'
             OpenET crop type image collection ID:
-                'projects/openet/xcrop_type/annual'
+                'projects/openet/assets/crop_type/v2023a'
                 Collection will be mosaiced to a single image.
             Integer (will be converted to an EE constant image)
         year : ee.Number
@@ -253,13 +253,17 @@ class Model():
             # Use the CDL image closest to the image date
             # Don't use CDL images before 2008
             cdl_coll = ee.ImageCollection('USDA/NASS/CDL')
-            cdl_year = ee.Number(self.year)\
-                .max(2008)\
+            cdl_year = (
+                ee.Number(self.year)
+                .max(2008)
                 .min(ee.Date(cdl_coll.aggregate_max('system:time_start')).get('year'))
-            cdl_coll = cdl_coll\
+            )
+            cdl_coll = (
+                cdl_coll
                 .filterDate(ee.Date.fromYMD(cdl_year, 1, 1),
-                            ee.Date.fromYMD(cdl_year.add(1), 1, 1))\
+                            ee.Date.fromYMD(cdl_year.add(1), 1, 1))
                 .select(['cropland'])
+            )
             crop_type_img = ee.Image(cdl_coll.first())
             properties = properties.set('id', crop_type_img.get('system:id'))
         elif (type(self.crop_type_source) is str and
@@ -268,16 +272,21 @@ class Model():
             crop_type_img = ee.Image(self.crop_type_source).select(['cropland'])
             properties = properties.set('id', crop_type_img.get('system:id'))
         elif (type(self.crop_type_source) is str and
-                'projects/openet/crop_type' in self.crop_type_source.lower()):
+              ('projects/openet/crop_type' in self.crop_type_source.lower() or
+               'projects/openet/assets/crop_type' in self.crop_type_source.lower())):
             # Assume source is an OpenET crop type image collection ID
             # Use the crop type image closest to the image date
             crop_coll = ee.ImageCollection(self.crop_type_source)
-            cdl_year = ee.Number(self.year)\
-                .max(ee.Date(crop_coll.aggregate_min('system:time_start')).get('year'))\
+            cdl_year = (
+                ee.Number(self.year)
+                .max(ee.Date(crop_coll.aggregate_min('system:time_start')).get('year'))
                 .min(ee.Date(crop_coll.aggregate_max('system:time_start')).get('year'))
-            crop_type_coll = ee.ImageCollection(self.crop_type_source)\
+            )
+            crop_type_coll = (
+                ee.ImageCollection(self.crop_type_source)
                 .filterDate(ee.Date.fromYMD(cdl_year, 1, 1),
                             ee.Date.fromYMD(cdl_year.add(1), 1, 1))
+            )
             crop_type_img = crop_type_coll.mosaic()
             properties = properties.set('id', crop_type_coll.get('system:id'))
         # TODO: Support ee.Image and ee.ImageCollection sources

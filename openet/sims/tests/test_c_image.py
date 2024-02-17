@@ -198,7 +198,8 @@ def test_Image_crop_type_properties():
         ['USDA/NASS/CDL/2018', [-120.5953, 36.8721], 213],
         # Default image year is 2017 so value should match 2017 CDL
         ['USDA/NASS/CDL', [-120.5953, 36.8721], 24],
-        ['projects/openet/crop_type/annual_provisional', [-120.125, 36.3893], 47],
+        ['projects/openet/assets/crop_type/v2021a', [-120.125, 36.3893], 47],
+        ['projects/openet/assets/crop_type/v2023a', [-120.125, 36.3893], 47],
     ]
 )
 def test_Image_crop_type_point_value(crop_type_source, xy, expected):
@@ -383,17 +384,17 @@ def test_Image_from_landsat_c2_sr_kc():
 
 def test_Image_from_landsat_c2_sr_et():
     """Test if ET can be built from a Landsat images"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716'
     output = utils.getinfo(sims.Image.from_landsat_c2_sr(
-        image_id, et_reference_source='IDAHO_EPSCOR/GRIDMET',
-        et_reference_band='etr').et)
+        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
+        et_reference_source='IDAHO_EPSCOR/GRIDMET', et_reference_band='etr').et)
     assert output['properties']['system:index'] == image_id.split('/')[-1]
 
 
 def test_Image_from_landsat_c2_sr_exception():
     """Test that an Exception is raise for an invalid image ID"""
     with pytest.raises(Exception):
-        utils.getinfo(sims.Image.from_landsat_c2_sr(ee.Image('FOO')).ndvi)
+        # Intentionally using .getInfo() since utils.getinfo() will catch the exception
+        sims.Image.from_landsat_c2_sr(ee.Image('FOO')).ndvi.getInfo()
 
 
 def test_Image_from_landsat_c2_sr_scaling():
@@ -409,7 +410,10 @@ def test_Image_from_landsat_c2_sr_scaling():
               'system:index': ee.String(sr_img.get('system:index')),
               'system:time_start': ee.Number(sr_img.get('system:time_start'))})
     )
-    output = utils.constant_image_value(sims.Image.from_landsat_c2_sr(input_img).ndvi)
+    # cloud score masking do not work with a constant image
+    #   and must be explicitly set to False
+    output = utils.constant_image_value(sims.Image.from_landsat_c2_sr(
+        input_img, cloudmask_args={'cloud_score_flag': False, 'filter_flag': False}).ndvi)
     assert abs(output['ndvi'] - 0.333) <= 0.01
 
 
@@ -421,9 +425,17 @@ def test_Image_from_landsat_c2_sr_reflectance_type():
 
 def test_Image_from_landsat_c2_sr_cloud_mask_args():
     """Test if the cloud_mask_args parameter can be set (not if it works)"""
-    image_id = 'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828'
     output = sims.Image.from_landsat_c2_sr(
-        image_id, cloudmask_args={'snow_flag': True, 'cirrus_flag': True})
+        'LANDSAT/LC08/C02/T1_L2/LC08_038031_20130828',
+        cloudmask_args={'snow_flag': True, 'cirrus_flag': True})
+    assert type(output) == type(default_image_obj())
+
+
+def test_Image_from_landsat_c2_sr_cloud_score_mask_arg():
+    """Test if the cloud_score_flag parameter can be set in cloudmask_args"""
+    output = sims.Image.from_landsat_c2_sr(
+        'LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716',
+        cloudmask_args={'cloud_score_flag': True, 'cloud_score_pct': 50})
     assert type(output) == type(default_image_obj())
 
 
