@@ -17,9 +17,9 @@ def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5], ndvi=[0.6, 
     ----------
     variables : list
         The variables to return in the collection
-    et_fraction : float
-    et : float
-    ndvi : float
+    et_fraction : list
+    et : list
+    ndvi : list
 
     Returns
     -------
@@ -28,7 +28,7 @@ def scene_coll(variables, et_fraction=[0.4, 0.4, 0.4], et=[5, 5, 5], ndvi=[0.6, 
     """
     img = (
         ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_044033_20170716')
-        .select(['B2']).double().multiply(0)
+        .select(['SR_B3']).double().multiply(0)
     )
     mask = img.add(1).updateMask(1).uint8()
 
@@ -206,66 +206,91 @@ def test_from_scene_et_fraction_t_interval_no_value():
         )
 
 
-@pytest.mark.parametrize(
-    'landsat_coll_id',
-    [
-        'LANDSAT/LC08/C02/T1_L2',
-    ]
-)
-def test_soil_evaporation_landsat(landsat_coll_id, tol=0.001):
+def test_soil_evaporation_landsat(tol=0.001):
     TEST_POINT = (-120.201, 36.1696)
     et_reference_source = 'IDAHO_EPSCOR/GRIDMET'
     et_reference_band = 'eto'
-    start_date = '2018-02-23'
+    start_date = '2018-02-16'
     end_date = '2018-03-08'
 
-    landsat_coll = ee.ImageCollection(landsat_coll_id)\
-        .filterDate(start_date, end_date)\
-        .filterBounds(ee.Geometry.Point(TEST_POINT))
-
-    zero = landsat_coll.first().select(1).double().multiply(0)
+    # Goal is to have the following two images in the test collection
+    # ['LC08_043035_20180218', 'LC08_043035_20180306']
+    landsat_coll = (
+        ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+        .filterDate(start_date, end_date)
+        .filterMetadata('WRS_PATH', 'equals', 43)
+        .filterMetadata('WRS_ROW', 'equals', 35)
+        # .filterBounds(ee.Geometry.Point(TEST_POINT))
+    )
 
     def make_et_frac(img):
         # if 'C02' in landsat_coll_id:
+        mask_img = img.select(['SR_B3']).double().multiply(0).rename(['mask'])
+        time_img = mask_img.add(ee.Number(img.get('system:time_start'))).rename(['time'])
         et_img = sims.Image.from_landsat_c2_sr(
             img,
             et_reference_source=et_reference_source,
             et_reference_band=et_reference_band,
+            cloudmask_args={'cloud_score_flag': False, 'filter_flag': False},
         ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+        return et_img.addBands([time_img])
 
-        time = ee.Number(img.get('system:time_start'))
-        et_img = et_img.addBands([zero.add(time).rename('time')])
-        return et_img
+    test_coll = landsat_coll.map(make_et_frac)
 
-    test_imgs = landsat_coll.map(make_et_frac)
+    # # Build the collection manually
+    # img_a = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_043035_20180218')
+    # img_b = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_043035_20180306')
+    # time_a = (
+    #     img_a.select(['SR_B3'], ['time'])
+    #     .double().multiply(0).add(ee.Number(img_a.get('system:time_start')))
+    # )
+    # time_b = (
+    #     img_b.select(['SR_B3'], ['time'])
+    #     .double().multiply(0).add(ee.Number(img_b.get('system:time_start')))
+    # )
+    # img_a = sims.Image.from_landsat_c2_sr(
+    #         img_a,
+    #         et_reference_source=et_reference_source,
+    #         et_reference_band=et_reference_band,
+    #         cloudmask_args={'cloud_score_flag': False, 'filter_flag': False},
+    #     ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+    # img_b = sims.Image.from_landsat_c2_sr(
+    #         img_b,
+    #         et_reference_source=et_reference_source,
+    #         et_reference_band=et_reference_band,
+    #         cloudmask_args={'cloud_score_flag': False, 'filter_flag': False},
+    #     ).calculate(['ndvi', 'et_reference', 'et_fraction', 'et'])
+    # test_coll = ee.ImageCollection([img_a.addBands([time_a]), img_b.addBands([time_b])])
+
     normal_coll = interpolate.from_scene_et_fraction(
-        test_imgs,
+        test_coll,
         start_date=start_date,
         end_date=end_date,
         variables=['et_reference', 'et_fraction', 'et'],
-        interp_args={'interp_method': 'linear', 'interp_days': 14},
+        interp_args={'interp_method': 'linear', 'interp_days': 32},
         model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
         t_interval='daily',
+        use_joins=True,
     )
+    normal = utils.point_coll_value(normal_coll, TEST_POINT, scale=30)
 
     wb_coll = interpolate.from_scene_et_fraction(
-        test_imgs,
+        test_coll,
         start_date=start_date,
         end_date=end_date,
         variables=['et_reference', 'et_fraction', 'ke', 'et', 'ndvi'],
-        interp_args={'interp_method': 'linear', 'interp_days': 14,
+        interp_args={'interp_method': 'linear', 'interp_days': 32,
                      'estimate_soil_evaporation': True},
         model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
                     'et_reference_band': 'eto',
                     'et_reference_factor': 1.0,
                     'et_reference_resample': 'nearest'},
         t_interval='daily',
+        use_joins=True,
     )
-
-    normal = utils.point_coll_value(normal_coll, TEST_POINT, scale=30)
     wb = utils.point_coll_value(wb_coll, TEST_POINT, scale=30)
 
     for date in normal['et'].keys():
@@ -288,7 +313,7 @@ def synth_test_imgs():
         .filterDate(start_date, end_date)
         .filterBounds(ee.Geometry.Point(TEST_POINT))
     )
-    mask = landsat_coll.first().select(['B2']).double().multiply(0)
+    mask = landsat_coll.first().select(['SR_B3']).double().multiply(0)
 
     test_imgs = []
     for index, row in comp_df.iterrows():
