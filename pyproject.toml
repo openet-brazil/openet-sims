@@ -4,10 +4,10 @@ version = "0.2.0"
 authors = [
     { name = "Alberto Guzman", email = "aguzman@csumb.edu" },
 ]
-description = "Earth Engine based SIMS Model"
+description = "Earth Engine implementation of the SIMS model"
 readme = "README.rst"
 requires-python = ">=3.8"
-keywords = ["SIMS", "OpenET", "Earth Engine", "evapotranspiration"]
+keywords = ["SIMS", "OpenET", "Earth Engine", "Evapotranspiration", "Landsat"]
 license = {file = "LICENSE.txt"}
 # license = {text = "Apache-2.0"}
 classifiers = [
@@ -17,8 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "earthengine-api>=0.1.364",
-    "openet-core>=0.2.0",
-    "python-dateutil",
+    "openet-core>=0.4.0",
 ]
 
 [project.urls]
@@ -40,3 +39,7 @@ test = [
 
 [tool.setuptools.package-data]
 "openet.sims.tests" = ["*.csv"]
+
+[tool.setuptools.packages.find]
+# include = ["openet*"]
+exclude = ["examples*"]

@@ -191,9 +191,9 @@ GRIDMET
   | http://www.climatologylab.org/gridmet.html
   | Grass reference ET band: eto
 Spatial CIMIS
-  | Collection ID: projects/openet/cimis/daily
+  | Collection ID: projects/openet/assets/reference_et/california/cimis/daily/v1
   | https://cimis.water.ca.gov/SpatialData.aspx
-  | Grass reference ET band: ETo_ASCE
+  | Grass reference ET band: eto
 
 Example Notebooks
 =================
@@ -217,7 +217,7 @@ Dependencies
 ============
 
  * `earthengine-api <https://github.com/google/earthengine-api>`__
- * `openet-core <https://github.com/Open-ET/openet-core-beta>`__
+ * `openet-core <https://github.com/Open-ET/openet-core>`__
 
 OpenET Namespace Package
 ========================
@@ -238,7 +238,7 @@ References
 
 
 
-.. |build| image:: https://github.com/Open-ET/openet-sims/workflows/build/badge.svg
+.. |build| image:: https://github.com/Open-ET/openet-sims/actions/workflows/build.yml/badge.svg
    :alt: Build status
    :target: https://github.com/Open-ET/openet-sims
 .. |version| image:: https://badge.fury.io/py/openet-sims.svg

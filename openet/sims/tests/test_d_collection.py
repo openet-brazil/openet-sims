@@ -20,26 +20,28 @@ SCENE_POINT = (-121.9, 39)
 VARIABLES = {'et', 'et_fraction', 'et_reference'}
 TEST_POINT = (-121.5265, 38.7399)
 
-default_coll_args = {
-    'collections': C02_COLLECTIONS,
-    'geometry': ee.Geometry.Point(SCENE_POINT),
-    'start_date': START_DATE,
-    'end_date': END_DATE,
-    'variables': list(VARIABLES),
-    'cloud_cover_max': 70,
-    'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
-    'et_reference_band': 'eto',
-    'et_reference_factor': 0.85,
-    'et_reference_resample': 'nearest',
-    'model_args': {
-        'cloudmask_args': {'cloud_score_flag': False, 'filter_flag': False},
-    },
-    'filter_args': {},
-}
+
+def default_coll_args():
+    return {
+        'collections': C02_COLLECTIONS,
+        'geometry': ee.Geometry.Point(SCENE_POINT),
+        'start_date': START_DATE,
+        'end_date': END_DATE,
+        'variables': list(VARIABLES),
+        'cloud_cover_max': 70,
+        'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
+        'et_reference_band': 'eto',
+        'et_reference_factor': 0.85,
+        'et_reference_resample': 'nearest',
+        'model_args': {
+            'cloudmask_args': {'cloud_score_flag': False, 'filter_flag': False},
+        },
+        'filter_args': {},
+    }
 
 
 def default_coll_obj(**kwargs):
-    args = default_coll_args.copy()
+    args = default_coll_args().copy()
     args.update(kwargs)
     return sims.Collection(**args)
 
@@ -52,7 +54,7 @@ def parse_scene_id(output_info):
 
 def test_Collection_init_default_parameters():
     """Test if init sets default parameters"""
-    args = default_coll_args.copy()
+    args = default_coll_args().copy()
     # These values are being set above but have defaults that need to be checked
     del args['et_reference_source']
     del args['et_reference_band']
@@ -444,14 +446,6 @@ def test_Collection_interpolate_et_reference_factor_exception():
     with pytest.raises(ValueError):
         utils.getinfo(default_coll_obj(
             et_reference_factor=-1, model_args={}).interpolate())
-
-
-# CGM - Resample is not working so commenting out for now
-# def test_Collection_interpolate_et_reference_resample_not_set():
-#     """Test if Exception is raised if et_reference_resample is not set"""
-#     with pytest.raises(ValueError):
-#         utils.getinfo(default_coll_obj(
-#             et_reference_resample=None, model_args={}).interpolate())
 
 
 def test_Collection_interpolate_et_reference_resample_exception():
