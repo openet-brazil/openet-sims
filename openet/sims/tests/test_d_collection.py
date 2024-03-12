@@ -9,7 +9,6 @@ import openet.sims.utils as utils
 # TODO: import utils from openet.core
 # import openet.core.utils as utils
 
-
 C02_COLLECTIONS = ['LANDSAT/LC08/C02/T1_L2', 'LANDSAT/LE07/C02/T1_L2']
 # Image LE07_044033_20170724 is not (yet?) in LANDSAT/LE07/C02/T1_L2
 C02_SCENE_ID_LIST = ['LC08_044033_20170716', 'LE07_044033_20170708']

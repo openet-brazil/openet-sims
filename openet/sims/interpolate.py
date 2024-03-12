@@ -101,7 +101,7 @@ def from_scene_et_fraction(
         use_joins = interp_args['use_joins']
     else:
         use_joins = True
-        # logging.debug('use_joins was not set in interp_args, default to True')
+        logging.debug('use_joins was not set in interp_args, default to True')
 
     # Check that the input parameters are valid
     if t_interval.lower() not in ['daily', 'monthly', 'annual', 'custom']:
@@ -268,6 +268,7 @@ def from_scene_et_fraction(
             start_date=start_date,
             end_date=end_date,
         )
+
         # The following is needed because the aggregate collection can be
         #   empty if there are no scenes in the target date range but there
         #   are scenes in the interpolation date range.
@@ -288,6 +289,7 @@ def from_scene_et_fraction(
         interp_days=interp_days,
         use_joins=use_joins,
         compute_product=False,
+        # resample_method=et_reference_resample,
     )
 
     if estimate_soil_evaporation:
@@ -305,8 +307,6 @@ def from_scene_et_fraction(
     if ('et' in variables) or ('et_fraction' in variables):
         def compute_et(img):
             """This function assumes ETr and ETf are present"""
-            et_frac = img.select(['et_fraction'])
-
             # Apply any resampling to the reference ET image before computing ET
             et_reference_img = img.select(['et_reference'])
             if et_reference_resample and (et_reference_resample in ['bilinear', 'bicubic']):
@@ -341,19 +341,12 @@ def from_scene_et_fraction(
 
         """
         if ('et' in variables) or ('et_fraction' in variables):
-            et_img = (
-                daily_coll
-                .filterDate(agg_start_date, agg_end_date)
-                .select(['et'])
-                .sum()
-            )
+            et_img = daily_coll.filterDate(agg_start_date, agg_end_date).select(['et']).sum()
 
         if ('et_reference' in variables) or ('et_fraction' in variables):
             et_reference_img = (
-                daily_et_ref_coll
-                .filterDate(agg_start_date, agg_end_date)
-                .select(['et_reference'])
-                .sum()
+                daily_et_ref_coll.filterDate(agg_start_date, agg_end_date)
+                .select(['et_reference']).sum()
             )
             if et_reference_resample and (et_reference_resample in ['bilinear', 'bicubic']):
                 et_reference_img = (
@@ -369,21 +362,17 @@ def from_scene_et_fraction(
             image_list.append(et_reference_img.float())
         if 'et_fraction' in variables:
             # Compute average et fraction over the aggregation period
-            image_list.append(
-                et_img.divide(et_reference_img).rename(['et_fraction']).float()
-            )
+            image_list.append(et_img.divide(et_reference_img).rename(['et_fraction']).float())
         if 'ndvi' in variables:
             # Compute average ndvi over the aggregation period
             ndvi_img = (
-                daily_coll
-                .filterDate(agg_start_date, agg_end_date)
+                daily_coll.filterDate(agg_start_date, agg_end_date)
                 .mean().select(['ndvi']).float()
             )
             image_list.append(ndvi_img)
         if 'count' in variables:
             count_img = (
-                aggregate_coll
-                .filterDate(agg_start_date, agg_end_date)
+                aggregate_coll.filterDate(agg_start_date, agg_end_date)
                 .select(['mask']).sum().rename('count').uint8()
             )
             image_list.append(count_img)
@@ -397,12 +386,14 @@ def from_scene_et_fraction(
                 )
                 image_list.append(var_img)
 
-        return ee.Image(image_list) \
+        return (
+            ee.Image(image_list)
             .set({
                 'system:index': ee.Date(agg_start_date).format(date_format),
                 'system:time_start': ee.Date(agg_start_date).millis(),
             })
-        #     .set(interp_properties)
+            # .set(interp_properties)
+        )
 
     # Combine input, interpolated, and derived values
     if t_interval.lower() == 'daily':
