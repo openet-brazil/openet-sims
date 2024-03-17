@@ -1,6 +1,6 @@
 [project]
 name = "openet-sims"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     { name = "Alberto Guzman", email = "aguzman@csumb.edu" },
 ]
@@ -16,8 +16,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "earthengine-api>=0.1.364",
-    "openet-core>=0.4.0",
+    "earthengine-api >= 0.1.364",
+    "openet-core >= 0.4.0",
 ]
 
 [project.urls]
