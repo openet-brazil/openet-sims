@@ -238,7 +238,7 @@ References
 
 
 
-.. |build| image:: https://github.com/Open-ET/openet-sims/actions/workflows/build.yml/badge.svg
+.. |build| image:: https://github.com/Open-ET/openet-sims/actions/workflows/tests.yml/badge.svg
    :alt: Build status
    :target: https://github.com/Open-ET/openet-sims
 .. |version| image:: https://badge.fury.io/py/openet-sims.svg
