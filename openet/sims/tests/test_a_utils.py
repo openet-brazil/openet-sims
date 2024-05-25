@@ -82,8 +82,8 @@ def test_point_coll_value(image_id, image_date, xy, scale, expected, tol):
 
     ]
 )
-def test_date_to_time_0utc(input, expected):
-    assert utils.getinfo(utils.date_to_time_0utc(ee.Date(input))) == expected
+def test_date_0utc(input, expected):
+    assert utils.getinfo(utils.date_0utc(ee.Date(input)).millis()) == expected
 
 
 @pytest.mark.parametrize(

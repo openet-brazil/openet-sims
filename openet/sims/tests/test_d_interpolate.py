@@ -32,34 +32,53 @@ def scene_coll(variables, etf=[0.4, 0.4, 0.4], et=[5, 5, 5], ndvi=[0.6, 0.6, 0.6
     )
     mask = img.add(1).updateMask(1).uint8()
 
-    # The "date" is used for the time band since it needs to be the 0 UTC time
+    # # The "date" is used for the time band since it needs to be the 0 UTC time
+    # date1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).millis())
+    # date2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).millis())
+    # date3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).millis())
+
     # The "time" is advanced to match the typical Landsat overpass time
-    date1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).millis())
-    date2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).millis())
-    date3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).millis())
     time1 = ee.Number(ee.Date.fromYMD(2017, 7, 8).advance(18, 'hours').millis())
     time2 = ee.Number(ee.Date.fromYMD(2017, 7, 16).advance(18, 'hours').millis())
     time3 = ee.Number(ee.Date.fromYMD(2017, 7, 24).advance(18, 'hours').millis())
 
-    # Mask and time bands currently get added on to the scene collection
-    #   and images are unscaled just before interpolating in the export tool
-    scene_coll = ee.ImageCollection([
-        ee.Image([img.add(etf[0]), img.add(et[0]), img.add(ndvi[0]), img.add(date1), mask])
-            .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LE07_044033_20170708', 'system:time_start': time1}),
-        ee.Image([img.add(etf[1]), img.add(et[1]), img.add(ndvi[1]), img.add(date2), mask])
-            .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LC08_044033_20170716', 'system:time_start': time2}),
-        ee.Image([img.add(etf[2]), img.add(et[2]), img.add(ndvi[2]), img.add(date3), mask])
-            .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
-            .set({'system:index': 'LE07_044033_20170724', 'system:time_start': time3}),
+    # TODO: Add code to convert et, et_fraction, and ndvi to lists if they
+    #   are set as a single value
+
+    # Don't add mask or time band to scene collection
+    # since they are now added in the interpolation calls
+    scene_coll = ee.ImageCollection.fromImages([
+        ee.Image([img.add(etf[0]), img.add(et[0]), img.add(ndvi[0])])
+        .rename(['et_fraction', 'et', 'ndvi'])
+        .set({'system:index': 'LE07_044033_20170708', 'system:time_start': time1}),
+        ee.Image([img.add(etf[1]), img.add(et[1]), img.add(ndvi[1])])
+        .rename(['et_fraction', 'et', 'ndvi'])
+        .set({'system:index': 'LC08_044033_20170716', 'system:time_start': time2}),
+        ee.Image([img.add(etf[2]), img.add(et[2]), img.add(ndvi[2])])
+        .rename(['et_fraction', 'et', 'ndvi'])
+        .set({'system:index': 'LE07_044033_20170724', 'system:time_start': time3}),
     ])
+
+    # # Mask and time bands currently get added on to the scene collection
+    # #   and images are unscaled just before interpolating in the export tool
+    # scene_coll = ee.ImageCollection([
+    #     ee.Image([img.add(etf[0]), img.add(et[0]), img.add(ndvi[0]), img.add(date1), mask])
+    #     .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
+    #     .set({'system:index': 'LE07_044033_20170708', 'system:time_start': time1}),
+    #     ee.Image([img.add(etf[1]), img.add(et[1]), img.add(ndvi[1]), img.add(date2), mask])
+    #     .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
+    #     .set({'system:index': 'LC08_044033_20170716', 'system:time_start': time2}),
+    #     ee.Image([img.add(etf[2]), img.add(et[2]), img.add(ndvi[2]), img.add(date3), mask])
+    #     .rename(['et_fraction', 'et', 'ndvi', 'time', 'mask'])
+    #     .set({'system:index': 'LE07_044033_20170724', 'system:time_start': time3}),
+    # ])
+
     return scene_coll.select(variables)
 
 
 def test_from_scene_et_fraction_t_interval_daily_values(tol=0.0001):
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask'], ndvi=[0.2, 0.4, 0.6]),
+        scene_coll(['et_fraction', 'ndvi'], ndvi=[0.2, 0.4, 0.6]),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi'],
         interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -90,7 +109,7 @@ def test_from_scene_et_fraction_t_interval_daily_values(tol=0.0001):
 
 def test_from_scene_et_fraction_t_interval_monthly_values(tol=0.0001):
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask']),
+        scene_coll(['et_fraction', 'ndvi']),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi', 'count'],
         interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -112,7 +131,7 @@ def test_from_scene_et_fraction_t_interval_monthly_values(tol=0.0001):
 
 def test_from_scene_et_fraction_t_interval_custom_values(tol=0.0001):
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask']),
+        scene_coll(['et_fraction', 'ndvi']),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi', 'count'],
         interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -134,7 +153,7 @@ def test_from_scene_et_fraction_t_interval_custom_values(tol=0.0001):
 
 def test_from_scene_et_fraction_t_interval_monthly_et_reference_factor(tol=0.0001):
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask']),
+        scene_coll(['et_fraction', 'ndvi']),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi', 'count'],
         interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -156,7 +175,7 @@ def test_from_scene_et_fraction_t_interval_monthly_et_reference_factor(tol=0.000
 
 def test_from_scene_et_fraction_t_interval_monthly_et_reference_resample(tol=0.0001):
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask']),
+        scene_coll(['et_fraction', 'ndvi']),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi', 'count'],
         interp_args={'interp_method': 'linear', 'interp_days': 32},
@@ -183,7 +202,7 @@ def test_from_scene_et_fraction_t_interval_monthly_et_reference_resample(tol=0.0
 def test_from_scene_et_fraction_t_interval_monthly_interp_args_et_reference(tol=0.0001):
     # Check that the et_reference parameters can be set through the interp_args
     output_coll = interpolate.from_scene_et_fraction(
-        scene_coll(['et_fraction', 'ndvi', 'time', 'mask']),
+        scene_coll(['et_fraction', 'ndvi']),
         start_date='2017-07-01', end_date='2017-08-01',
         variables=['et', 'et_reference', 'et_fraction', 'ndvi', 'count'],
         interp_args={'interp_method': 'linear', 'interp_days': 32,
@@ -208,7 +227,7 @@ def test_from_scene_et_fraction_t_interval_bad_value():
     # Function should raise a ValueError if t_interval is not supported
     with pytest.raises(ValueError):
         interpolate.from_scene_et_fraction(
-            scene_coll(['et', 'time', 'mask']),
+            scene_coll(['et']),
             start_date='2017-07-01', end_date='2017-08-01', variables=['et'],
             interp_args={'interp_method': 'linear', 'interp_days': 32},
             model_args={'et_reference_source': 'IDAHO_EPSCOR/GRIDMET',
@@ -223,7 +242,7 @@ def test_from_scene_et_fraction_t_interval_no_value():
     # Function should raise an Exception if t_interval is not set
     with pytest.raises(TypeError):
         interpolate.from_scene_et_fraction(
-            scene_coll(['et', 'time', 'mask']),
+            scene_coll(['et']),
             start_date='2017-07-01', end_date='2017-08-01',
             variables=['et', 'et_reference', 'et_fraction', 'count'],
             interp_args={'interp_method': 'linear', 'interp_days': 32},
