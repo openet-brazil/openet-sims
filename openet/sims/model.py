@@ -84,18 +84,18 @@ class Model():
 
         # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
-        self.crop_data = self._crop_data()
-        self.crop_type = self._crop_type()
-        self.crop_class = crop_data_image('crop_class', self.crop_type, self.crop_data, 0)
+        #self.crop_data = self._crop_data()
+        #self.crop_type = self._crop_type()
+        #self.crop_class = crop_data_image('crop_class', self.crop_type, self.crop_data, 0)
 
         # Manually set the crop data parameter images as class properties
         # Set default values for some properties to ensure fr == 1
-        self.h_max = crop_data_image('h_max', self.crop_type, self.crop_data)
-        self.m_l = crop_data_image('m_l', self.crop_type, self.crop_data)
-        self.fr_mid = crop_data_image('fr_mid', self.crop_type, self.crop_data, 1)
-        self.fr_end = crop_data_image('fr_end', self.crop_type, self.crop_data, 1)
-        self.ls_start = crop_data_image('ls_start', self.crop_type, self.crop_data, 1)
-        self.ls_stop = crop_data_image('ls_stop', self.crop_type, self.crop_data, 365)
+        #self.h_max = crop_data_image('h_max', self.crop_type, self.crop_data)
+        #self.m_l = crop_data_image('m_l', self.crop_type, self.crop_data)
+        #self.fr_mid = crop_data_image('fr_mid', self.crop_type, self.crop_data, 1)
+        #self.fr_end = crop_data_image('fr_end', self.crop_type, self.crop_data, 1)
+        #self.ls_start = crop_data_image('ls_start', self.crop_type, self.crop_data, 1)
+        #self.ls_stop = crop_data_image('ls_stop', self.crop_type, self.crop_data, 365)
         # setattr('h_max', crop_data_image(
         #     'h_max', self.crop_type, self.crop_data))
 
@@ -146,25 +146,27 @@ class Model():
         # Start with the generic NDVI-Kc relationship to initialize Kc
         kc = self.kc_generic(ndvi)
 
-        # Apply generic crop class Kc functions
-        kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
-        kc = kc.where(self.crop_class.eq(2), self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
-        kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
-        kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
-        kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
-        kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
+        # TODO  crop_class disabled for now (LL)
 
-        if self.crop_type_kc_flag:
+        # Apply generic crop class Kc functions
+        #kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
+        #kc = kc.where(self.crop_class.eq(2), self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
+        #kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
+        #kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
+        #kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
+        #kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
+
+        #if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
             # The h_max image was built with all non-remapped crop_types as nodata
-            if not self.crop_type_annual_skip_flag:
-                kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
-                              self._kcb(self._kd_row_crop(fc)))
+            #if not self.crop_type_annual_skip_flag:
+                #kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
+                #              self._kcb(self._kd_row_crop(fc)))
 
-            kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
-                          self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
+            #kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
+            #              self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
             # CGM - Commenting out for now
             # kc = kc.where(
@@ -174,11 +176,11 @@ class Model():
         # CGM - Is it okay to apply this after all the other Kc functions?
         #   Should we only apply this to non-ag crop classes?
         if self.water_kc_flag:
-            kc = kc.where(ndvi.lt(0).And(self.crop_class.eq(0)), 1.05)
-            # kc = kc.where(ndvi.lt(0), 1.05)
+            #kc = kc.where(ndvi.lt(0).And(self.crop_class.eq(0)), 1.05)
+            kc = kc.where(ndvi.lt(0), 1.05)
 
-        if self.mask_non_ag_flag:
-            kc = kc.updateMask(self.crop_class.gt(0))
+        #if self.mask_non_ag_flag:
+        #    kc = kc.updateMask(self.crop_class.gt(0))
 
         return kc.rename(['kc'])
 
