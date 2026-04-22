@@ -84,18 +84,18 @@ class Model():
 
         # CGM - Trying out setting these as properties in init
         #   instead of as lazy properties below
-        self.crop_data = self._crop_data()
-        self.crop_type = self._crop_type()
-        self.crop_class = crop_data_image('crop_class', self.crop_type, self.crop_data, 0)
+        #self.crop_data = self._crop_data()
+        #self.crop_type = self._crop_type()
+        #self.crop_class = crop_data_image('crop_class', self.crop_type, self.crop_data, 0)
 
         # Manually set the crop data parameter images as class properties
         # Set default values for some properties to ensure fr == 1
-        self.h_max = crop_data_image('h_max', self.crop_type, self.crop_data)
-        self.m_l = crop_data_image('m_l', self.crop_type, self.crop_data)
-        self.fr_mid = crop_data_image('fr_mid', self.crop_type, self.crop_data, 1)
-        self.fr_end = crop_data_image('fr_end', self.crop_type, self.crop_data, 1)
-        self.ls_start = crop_data_image('ls_start', self.crop_type, self.crop_data, 1)
-        self.ls_stop = crop_data_image('ls_stop', self.crop_type, self.crop_data, 365)
+        #self.h_max = crop_data_image('h_max', self.crop_type, self.crop_data)
+        #self.m_l = crop_data_image('m_l', self.crop_type, self.crop_data)
+        #self.fr_mid = crop_data_image('fr_mid', self.crop_type, self.crop_data, 1)
+        #self.fr_end = crop_data_image('fr_end', self.crop_type, self.crop_data, 1)
+        #self.ls_start = crop_data_image('ls_start', self.crop_type, self.crop_data, 1)
+        #self.ls_stop = crop_data_image('ls_stop', self.crop_type, self.crop_data, 365)
         # setattr('h_max', crop_data_image(
         #     'h_max', self.crop_type, self.crop_data))
 
@@ -144,27 +144,100 @@ class Model():
         fc = self.fc(ndvi)
 
         # Start with the generic NDVI-Kc relationship to initialize Kc
-        kc = self.kc_generic(ndvi)
+        #kc = self.kc_generic(ndvi)
 
+        # ================================================================================
+        # CALIBRATED EQUATIONS FOR BRAZIL
+        # ================================================================================
+        # Format the band name string (e.g., 'classification_2020')
+        mapbiomas_band_name = ee.String('classification_').cat(self.year.format())
+
+
+        # Select MapBiomas classification for the specific year
+        mapbiomas = ee.Image('projects/mapbiomas-public/assets/brazil/lulc/collection10/mapbiomas_brazil_collection10_coverage_v2');
+
+        mapbiomas_year = mapbiomas.select(mapbiomas_band_name)
+
+        # Get the valid pixel mask (1 where data exists, 0 where masked/cloudy)
+        landsat_valid_mask = ndvi.mask()
+
+        # 4. Define MapBiomas classes
+        agriculture_classes = [14, 18, 19, 20, 21, 35, 36, 39, 40, 41, 46, 47, 48, 62]
+        pasture_classes = [12, 15]
+        all_classes = agriculture_classes + pasture_classes
+
+        # 5. Create Land Cover Masks using .remap()
+        # We use ee.List.repeat(1, length) to map all target classes to the value 1
+        mask_all = mapbiomas_year.remap(
+            all_classes, 
+            ee.List.repeat(1, len(all_classes)), 
+            0
+        )
+
+        mask_agriculture = mapbiomas_year.remap(
+            agriculture_classes, 
+            ee.List.repeat(1, len(agriculture_classes)), 
+            0
+        )
+
+        mask_pasture = mapbiomas_year.remap(
+            pasture_classes, 
+            ee.List.repeat(1, len(pasture_classes)), 
+            0
+        )
+
+        # 6. Combine Landsat validity (clouds/no-data) with Land Cover interest
+        # Result: 1 only if it is a valid Landsat pixel AND in a target MapBiomas class
+        combined_mask = landsat_valid_mask.And(mask_all)
+        # 2. Equation 6: Agriculture (General)
+        # Kc = -0.3280 * fc² + 1.2843 * fc + 0.1703
+        kc_agriculture = fc.expression(
+            '(-0.3280) * (Fc ** 2) + 1.2843 * Fc + 0.1703',
+            {'Fc': fc}
+        ).rename('Kc_agr')
+
+        # 3. Equation 9: Pasture
+        # Kc = -1.1152 * fc² + 2.1136 * fc + 0.0000
+        kc_pasture = fc.expression(
+            '(-1.1152) * (Fc ** 2) + 2.1136 * Fc + 0.0000',
+            {'Fc': fc}
+        ).rename('Kc_pas')
+
+        # 4. Apply conditional logic for Pasture and Grassland
+        # Check if MapBiomas Class is 12 or 15 and NDVI <= 0.40
+        is_pasture_or_grass = mask_pasture.eq(1)
+        is_low_ndvi = ndvi.lte(0.40)
+
+        # Apply the conditional: where pasture/grass AND low NDVI, use Fc as Kc
+        kc_pasture_adjusted = kc_pasture.where(
+            is_pasture_or_grass.And(is_low_ndvi), 
+            fc
+        )
+
+        # 5. Combine Kc for agriculture and pasture based on land cover
+        # Logic: Start with agriculture, then overlay the adjusted pasture values
+        kc = kc_agriculture \
+            .where(mask_pasture.eq(1), kc_pasture_adjusted)\
+            .rename('Kc')
         # Apply generic crop class Kc functions
-        kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
-        kc = kc.where(self.crop_class.eq(2), self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
-        kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
-        kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
-        kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
-        kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
+        #kc = kc.where(self.crop_class.eq(1), self.kc_row_crop(fc))
+        #kc = kc.where(self.crop_class.eq(2), self._kcb(self._kd_vine(fc)).clamp(0, 1.1))
+        #kc = kc.where(self.crop_class.eq(3), self.kc_tree(fc))
+        #kc = kc.where(self.crop_class.eq(5), self.kc_rice(fc, ndvi))
+        #kc = kc.where(self.crop_class.eq(6), self.kc_fallow(fc, ndvi))
+        #kc = kc.where(self.crop_class.eq(7), self.kc_grass_pasture(fc, ndvi))
 
-        if self.crop_type_kc_flag:
+        #if self.crop_type_kc_flag:
             # Apply crop type specific Kc functions
             # h_max.gte(0) is needed to select pixels that have custom
             #   coefficient values in the crop_data dictionary
             # The h_max image was built with all non-remapped crop_types as nodata
-            if not self.crop_type_annual_skip_flag:
-                kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
-                              self._kcb(self._kd_row_crop(fc)))
+            #if not self.crop_type_annual_skip_flag:
+                #kc = kc.where(self.crop_class.eq(1).And(self.h_max.gte(0)),
+                #              self._kcb(self._kd_row_crop(fc)))
 
-            kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
-                          self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
+            #kc = kc.where(self.crop_class.eq(3).And(self.h_max.gte(0)),
+            #              self._kcb(self._kd_tree(fc)).clamp(0, 1.2))
 
             # CGM - Commenting out for now
             # kc = kc.where(
@@ -174,13 +247,13 @@ class Model():
         # CGM - Is it okay to apply this after all the other Kc functions?
         #   Should we only apply this to non-ag crop classes?
         if self.water_kc_flag:
-            kc = kc.where(ndvi.lt(0).And(self.crop_class.eq(0)), 1.05)
-            # kc = kc.where(ndvi.lt(0), 1.05)
+            #kc = kc.where(ndvi.lt(0).And(self.crop_class.eq(0)), 1.05)
+            kc = kc.where(ndvi.lt(0), 1.05)
 
-        if self.mask_non_ag_flag:
-            kc = kc.updateMask(self.crop_class.gt(0))
+        #if self.mask_non_ag_flag:
+        #    kc = kc.updateMask(self.crop_class.gt(0))
 
-        return kc.rename(['kc'])
+        return kc.updateMask(combined_mask).rename(['kc'])
 
     # @lazy_property
     def fc(self, ndvi):
